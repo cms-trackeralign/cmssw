@@ -3,7 +3,8 @@
 #include <TH2.h>
 #include <TStyle.h>
 #include <TCanvas.h>
-
+#include <TMath.h>
+#include <cmath>
 void Cosmicv1::Loop()
 {
 
@@ -92,14 +93,24 @@ void Cosmicv1::Loop()
 //   fprintf(file,"\t\t|\t\t Various Track Rates\t\t|\n");
 //   fprintf(file,"runnum\t| Total\t\t| FPIX\t\t| BPIX\t\t| \n");
 //file<<"runnum\t"<<"| Total\t\t"<<"| FPIX\t\t"<<"| BPIX\t\t"<<endl;
-
+ 
+/*   double * unweighted_track_rate 	= new double[n];
+   double * unweighted_track_rate_TEC	= new double[n];
+   double * unweighted_track_rate_TOB	= new double[n];
+   double * unweighted_track_rate_TIB	= new double[n];
+   double * unweighted_track_rate_TID	= new double[n];
+   double * unweighted_track_rate_FPIX	= new double[n];
+   double * unweighted_track_rate_BPIX	= new double[n];
+   double * unweighted_event_rate 	= new double[n];
+  */
+   double * weight	      	= new double[n];
 
    for (Long64_t jentry=0; jentry<nentries;jentry++) {		// Loop to calculate rates
 
       Long64_t ientry = LoadTree(jentry);
       if (ientry < 0) break;
       nb = fChain->GetEntry(jentry);   nbytes += nb;
-      if (run_time->at(0) == 0) continue;
+//      if (run_time->at(0) == 0) continue;
 
       for (int k = 0; k < pt->size() ; k++)			// Loop to calculate Kinematical distributions
       {
@@ -141,10 +152,24 @@ void Cosmicv1::Loop()
 
       FPIX_rate += track_rate_FPIX[ientry];
       BPIX_rate += track_rate_BPIX[ientry];
-      TIB_rate += track_rate_TIB[ientry];
-      TID_rate += track_rate_TID[ientry];
-      TEC_rate += track_rate_TEC[ientry];
-      TOB_rate += track_rate_TOB[ientry];
+      TIB_rate  += track_rate_TIB[ientry];
+      TID_rate  += track_rate_TID[ientry];
+      TEC_rate  += track_rate_TEC[ientry];
+      TOB_rate  += track_rate_TOB[ientry];
+
+
+/*      unweighted_track_rate[ientry] 	   	+= track_rate[ientry] 	   * number_of_events->at(0);
+      unweighted_track_rate_TEC[ientry]  	+= track_rate_TEC[ientry]  * number_of_events->at(0);
+      unweighted_track_rate_TOB[ientry]   	+= track_rate_TOB[ientry]  * number_of_events->at(0);
+      unweighted_track_rate_TIB[ientry]   	+= track_rate_TIB[ientry]  * number_of_events->at(0);
+      unweighted_track_rate_TID[ientry]   	+= track_rate_TID[ientry]  * number_of_events->at(0);
+      unweighted_track_rate_FPIX[ientry]  	+= track_rate_FPIX[ientry] * number_of_events->at(0);
+      unweighted_track_rate_BPIX[ientry]  	+= track_rate_BPIX[ientry] * number_of_events->at(0);
+      unweighted_event_rate[ientry] 	   	+= event_rate[ientry] 	   * number_of_events->at(0);
+*/  
+      weight[ientry]  	   	= number_of_events->at(0);
+//      cout<<ientry<<"\t"<<weight[ientry]<<endl;
+//      cout<<ientry<<"\t"<<event_rate[ientry]<<endl;
 
 //      fprintf(file,"%d\t| %.3lf\t\t| %.3lf\t\t| %.3lf\t\t| \n",runNumber[ientry],track_rate[ientry],track_rate_FPIX[ientry],track_rate_BPIX[ientry]);
       // if (Cut(ientry) < 0) continue;
@@ -594,6 +619,134 @@ void Cosmicv1::Loop()
 
 */
 
+
+//***************************************************************************************************************/
+//					Weighted Mean calculation						//
+/***************************************************************************************************************/
+
+						
+        double weighted_track_rate 	= 0;
+        double weighted_track_rate_TEC	= 0;
+        double weighted_track_rate_TOB	= 0;
+        double weighted_track_rate_TIB	= 0;
+        double weighted_track_rate_TID	= 0;
+        double weighted_track_rate_FPIX	= 0;
+        double weighted_track_rate_BPIX	= 0;
+        double weighted_event_rate 	= 0;
+        double total_weight		= 0;
+
+	double weighted_mean_track_rate;
+	double weighted_mean_track_rate_TEC;
+	double weighted_mean_track_rate_TOB;
+	double weighted_mean_track_rate_TIB;
+	double weighted_mean_track_rate_TID;
+	double weighted_mean_track_rate_FPIX;
+	double weighted_mean_track_rate_BPIX;
+	double weighted_mean_event_rate;
+
+
+	for (int a = 0; a < n ; a++)
+	{
+	
+          weighted_track_rate 		+= track_rate[a]     * weight[a] ; 		
+          weighted_track_rate_TEC 	+= track_rate_TEC[a] * weight[a] ; 	
+          weighted_track_rate_TOB 	+= track_rate_TOB[a] * weight[a] ; 	
+          weighted_track_rate_TIB 	+= track_rate_TIB[a] * weight[a] ;	
+          weighted_track_rate_TID 	+= track_rate_TID[a] * weight[a] ;	
+          weighted_track_rate_FPIX 	+= track_rate_FPIX[a]* weight[a] ;	
+          weighted_track_rate_BPIX 	+= track_rate_BPIX[a]* weight[a] ; 	
+          weighted_event_rate 		+= event_rate[a]     * weight[a] ; 		
+	  total_weight			+= weight[a]         		 ;
+	}
+	weighted_mean_track_rate 	= weighted_track_rate/total_weight;
+	weighted_mean_track_rate_TEC 	= weighted_track_rate_TEC/total_weight;
+	weighted_mean_track_rate_TOB 	= weighted_track_rate_TOB/total_weight;
+	weighted_mean_track_rate_TIB 	= weighted_track_rate_TIB/total_weight;
+	weighted_mean_track_rate_TID 	= weighted_track_rate_TID/total_weight;
+	weighted_mean_track_rate_FPIX 	= weighted_track_rate_BPIX/total_weight;
+	weighted_mean_track_rate_BPIX 	= weighted_track_rate_FPIX/total_weight;
+	weighted_mean_event_rate 	= weighted_event_rate/total_weight;
+
+        cout<<endl<<endl;
+	cout<< "##########################################################################################"<<endl;
+	cout<< "				Weighted Mean 						  "<<endl;
+	cout<< "##########################################################################################"<<endl;
+	cout<<endl; 
+	cout<<"weighted_mean_track_rate       :   "<<weighted_mean_track_rate      <<endl;
+	cout<<"weighted_mean_track_rate_TEC   :   "<<weighted_mean_track_rate_TEC  <<endl;
+	cout<<"weighted_mean_track_rate_TOB   :   "<<weighted_mean_track_rate_TOB  <<endl;
+	cout<<"weighted_mean_track_rate_TIB   :   "<<weighted_mean_track_rate_TIB  <<endl;
+	cout<<"weighted_mean_track_rate_TID   :   "<<weighted_mean_track_rate_TID  <<endl;
+	cout<<"weighted_mean_track_rate_FPIX  :   "<<weighted_mean_track_rate_FPIX <<endl;
+	cout<<"weighted_mean_track_rate_BPIX  :   "<<weighted_mean_track_rate_BPIX <<endl;
+	cout<<"weighted_mean_event_rate       :   "<<weighted_mean_event_rate      <<endl;
+        cout<<endl<<endl;
+
+	
+	double weighted_diff_track_rate		=0 ;
+	double weighted_diff_track_rate_TEC	=0 ;
+	double weighted_diff_track_rate_TOB	=0 ;
+	double weighted_diff_track_rate_TIB	=0 ;
+	double weighted_diff_track_rate_TID	=0 ;
+	double weighted_diff_track_rate_FPIX	=0 ;
+	double weighted_diff_track_rate_BPIX	=0 ;
+	double weighted_diff_event_rate		=0 ;
+
+	double RMS_diff_track_rate	 ;
+	double RMS_diff_track_rate_TEC	 ;
+	double RMS_diff_track_rate_TOB	 ;
+	double RMS_diff_track_rate_TIB	 ;
+	double RMS_diff_track_rate_TID	 ;
+	double RMS_diff_track_rate_FPIX	 ;
+	double RMS_diff_track_rate_BPIX	 ;
+	double RMS_diff_event_rate	 ;
+
+	for (int b = 0 ; b < n ; b++ )
+	{
+	  weighted_diff_track_rate	+=  pow( ( track_rate[b]     - weighted_mean_track_rate 	) , 2) * weight[b] ; 	
+          weighted_diff_track_rate_TEC	+=  pow( ( track_rate_TEC[b] - weighted_mean_track_rate_TEC 	) , 2) * weight[b] ; 
+          weighted_diff_track_rate_TOB	+=  pow( ( track_rate_TOB[b] - weighted_mean_track_rate_TOB 	) , 2) * weight[b] ; 
+          weighted_diff_track_rate_TIB	+=  pow( ( track_rate_TIB[b] - weighted_mean_track_rate_TIB 	) , 2) * weight[b] ; 
+          weighted_diff_track_rate_TID	+=  pow( ( track_rate_TID[b] - weighted_mean_track_rate_TID 	) , 2) * weight[b] ; 
+          weighted_diff_track_rate_FPIX	+=  pow( ( track_rate_FPIX[b]- weighted_mean_track_rate_FPIX 	) , 2) * weight[b] ; 
+          weighted_diff_track_rate_BPIX	+=  pow( ( track_rate_BPIX[b]- weighted_mean_track_rate_BPIX 	) , 2) * weight[b] ; 
+          weighted_diff_event_rate	+=  pow( ( event_rate[b]     - weighted_mean_event_rate 	) , 2) * weight[b] ; 
+//cout<<weighted_diff_track_rate<<endl;
+	}
+
+	double M;
+	
+	M = double((n-1))/n;
+
+	RMS_diff_track_rate	 = sqrt (   weighted_diff_track_rate	  / ( M * total_weight ) ) ;  
+        RMS_diff_track_rate_TEC	 = sqrt (   weighted_diff_track_rate_TEC  / ( M * total_weight ) ) ;      
+        RMS_diff_track_rate_TOB	 = sqrt (   weighted_diff_track_rate_TOB  / ( M * total_weight ) ) ;      
+        RMS_diff_track_rate_TIB	 = sqrt (   weighted_diff_track_rate_TIB  / ( M * total_weight ) ) ;      
+        RMS_diff_track_rate_TID	 = sqrt (   weighted_diff_track_rate_TID  / ( M * total_weight ) ) ;      
+        RMS_diff_track_rate_FPIX = sqrt (   weighted_diff_track_rate_FPIX / ( M * total_weight ) ) ;           
+        RMS_diff_track_rate_BPIX = sqrt (   weighted_diff_track_rate_BPIX / ( M * total_weight ) ) ;           
+        RMS_diff_event_rate	 = sqrt (   weighted_diff_event_rate      / ( M * total_weight ) ) ; 	
+
+ 
+        cout<<endl<<endl;
+	cout<< "##########################################################################################"<<endl;
+	cout<< "				Weighted RMS 						  "<<endl;
+	cout<< "##########################################################################################"<<endl;
+	cout<<endl;
+
+	cout<<"RMS_diff_track_rate	 :   " <<RMS_diff_track_rate	  <<endl;  
+	cout<<"RMS_diff_track_rate_TEC	 :   " <<RMS_diff_track_rate_TEC  <<endl; 	 
+	cout<<"RMS_diff_track_rate_TOB	 :   " <<RMS_diff_track_rate_TOB  <<endl; 	 
+	cout<<"RMS_diff_track_rate_TIB	 :   " <<RMS_diff_track_rate_TIB  <<endl; 	 
+	cout<<"RMS_diff_track_rate_TID	 :   " <<RMS_diff_track_rate_TID  <<endl; 	 
+	cout<<"RMS_diff_track_rate_FPIX  :   " <<RMS_diff_track_rate_FPIX <<endl;  
+	cout<<"RMS_diff_track_rate_BPIX  :   " <<RMS_diff_track_rate_BPIX <<endl;  
+	cout<<"RMS_diff_event_rate	 :   " <<RMS_diff_event_rate	  <<endl; 
+	cout<<endl;
+
+
+
+ 
 /****************************************************************************************************/
 //			Summary Plot for track rate in each Subdetector				     //
 /****************************************************************************************************/
@@ -604,12 +757,12 @@ void Cosmicv1::Loop()
    	h1b->SetBarOffset(0.35);
    	h1b->SetStats(0);
 
-	Bar_Ytitle[0] = FPIX_rate/n;
-	Bar_Ytitle[1] = BPIX_rate/n;
-	Bar_Ytitle[2] = TIB_rate/n;
-	Bar_Ytitle[3] = TID_rate/n;
-	Bar_Ytitle[4] = TOB_rate/n;
-	Bar_Ytitle[5] = TEC_rate/n;
+	Bar_Ytitle[0] = weighted_mean_track_rate_FPIX;     
+	Bar_Ytitle[1] = weighted_mean_track_rate_BPIX; 
+	Bar_Ytitle[2] = weighted_mean_track_rate_TIB; 
+	Bar_Ytitle[3] = weighted_mean_track_rate_TID;
+	Bar_Ytitle[4] = weighted_mean_track_rate_TOB; 
+	Bar_Ytitle[5] = weighted_mean_track_rate_TEC;
 
       for (i=1; i<=6; i++)
         {
@@ -624,6 +777,7 @@ void Cosmicv1::Loop()
 	h1b->Draw("bTEXT");
 	c->SaveAs("Summary_Chart.png");
         c->Close();
+
 
 
 } 			// Cosmicv1::Loop() closed
