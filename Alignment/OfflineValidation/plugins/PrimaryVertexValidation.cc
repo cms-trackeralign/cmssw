@@ -509,11 +509,11 @@ PrimaryVertexValidation::analyze(const edm::Event& iEvent, const edm::EventSetup
 	  
 	  try{
 	      
-	    // VertexFitter<5>* fitter = new AdaptiveVertexFitter;
-	    // TransientVertex theFittedVertex = fitter->vertex(theFinalTracks);
+	    VertexFitter<5>* theFitter = new AdaptiveVertexFitter;
+	    TransientVertex theFittedVertex = theFitter->vertex(theFinalTracks);
 
-	    AdaptiveVertexFitter* theFitter = new AdaptiveVertexFitter;
-	    TransientVertex theFittedVertex = theFitter->vertex(theFinalTracks,beamSpot);  // if you want the beam constraint
+	    //AdaptiveVertexFitter* theFitter = new AdaptiveVertexFitter;
+	    //TransientVertex theFittedVertex = theFitter->vertex(theFinalTracks,beamSpot);  // if you want the beam constraint
 
 	    double totalTrackWeights=0;
 	    if(theFittedVertex.isValid ()){

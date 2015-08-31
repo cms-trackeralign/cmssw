@@ -38,6 +38,7 @@
 #include <TDatime.h>
 #include <TSpectrum.h>
 #include <TSystem.h>
+#include <TStopwatch.h>
 #include "TkAlStyle.cc"
 
 void arrangeCanvas(TCanvas *canv,TH1F* meanplots[100],TH1F* widthplots[100],Int_t nFiles,TString LegLabels[10],bool onlyBias=false);
@@ -57,7 +58,7 @@ void FillTrendPlot(TH1F* trendPlot, TH1F* residualsPlot[100], TString fitPar_, T
 void MakeNiceTrendPlotStyle(TH1 *hist,Int_t color);
 void MakeNicePlotStyle(TH1 *hist);
 void FitPVResiduals(TString namesandlabels,bool stdres=true);
-TH1F* DrawZero(TH1F *hist,Int_t nbins,Double_t lowedge,Double_t highedge);
+TH1F* DrawZero(TH1F *hist,Int_t nbins,Double_t lowedge,Double_t highedge,Int_t iter);
 void makeNewXAxis (TH1F *h);
 
 void setStyle();
@@ -65,6 +66,9 @@ void setStyle();
 //*************************************************************
 void FitPVResiduals(TString namesandlabels,bool stdres){
 //*************************************************************
+  
+  TStopwatch timer; 	 
+  timer.Start();
 
   gROOT->ProcessLine(".L TkAlStyle.cc+");
   TkAlStyle::set(PRELIMINARY);	// set publication status
@@ -343,6 +347,8 @@ void FitPVResiduals(TString namesandlabels,bool stdres){
   dzPhiBiasCanvas->SaveAs("dzPhiBiasCanvas.root"); 
   dzEtaBiasCanvas->SaveAs("dzEtaBiasCanvas.root"); 
 
+  timer.Stop(); 	 
+  timer.Print();
 
 }
 
@@ -350,7 +356,7 @@ void FitPVResiduals(TString namesandlabels,bool stdres){
 void arrangeBiasCanvas(TCanvas *canv,TH1F* dxyPhiMeanTrend[100],TH1F* dzPhiMeanTrend[100],TH1F* dxyEtaMeanTrend[100],TH1F* dzEtaMeanTrend[100],Int_t nFiles, TString LegLabels[10]){
 //*************************************************************
 
-  TLegend *lego = new TLegend(0.19,0.70,0.79,0.92);
+  TLegend *lego = new TLegend(0.19,0.80,0.79,0.92);
   lego-> SetNColumns(2);
   lego->SetFillColor(10);
   lego->SetTextSize(0.042);
@@ -359,20 +365,20 @@ void arrangeBiasCanvas(TCanvas *canv,TH1F* dxyPhiMeanTrend[100],TH1F* dzPhiMeanT
   lego->SetLineColor(10);
   lego->SetShadowColor(10);
 
-  TPaveText *pt = new TPaveText(0.13,0.95,0.89,0.97,"NDC");
+  TPaveText *pt = new TPaveText(0.20,0.955,0.260,0.985,"NDC");
   pt->SetFillColor(10);
   pt->SetTextColor(1);
-  pt->SetTextFont(42);
-  pt->SetTextAlign(11);
-  TText *text1 = pt->AddText("CMS Preliminary 2015 - 3.8T collision data");
+  pt->SetTextFont(61);
+  // pt->SetTextAlign(11);
+  TText *text1 = pt->AddText("CMS"); // Preliminary 2015 - 3.8T collision data");
   text1->SetTextSize(0.05);
  
-  TPaveText *pt2 = new TPaveText(0.70,0.75,0.89,0.92,"NDC");
+  TPaveText *pt2 = new TPaveText(0.40,0.955,0.50,0.985,"NDC");
   pt2->SetFillColor(10);
-  pt2->SetTextColor(kBlue);
-  pt2->SetTextFont(62);
-  pt2->SetTextAlign(11);
-  TText *text2 = pt2->AddText("run 247078");
+  // pt2->SetTextColor(kBlue);
+  pt2->SetTextFont(52);
+  pt2->SetTextAlign(22);
+  TText *text2 = pt2->AddText("work in progress");
   text2->SetTextSize(0.05);
 
   canv->SetFillColor(10);  
@@ -435,9 +441,17 @@ void arrangeBiasCanvas(TCanvas *canv,TH1F* dxyPhiMeanTrend[100],TH1F* dzPhiMeanT
 	  dBiasTrend[k][i]->GetYaxis()->SetRangeUser(-theExtreme-(safeDelta/2.),theExtreme+(safeDelta/2.));
 	  //dBiasTrend[k][i]->GetYaxis()->SetRangeUser(-theExtreme,theExtreme);
 	} 
-	dBiasTrend[k][i]->Draw("Le1");
+	dBiasTrend[k][i]->Draw("e1");
+	makeNewXAxis(dBiasTrend[k][i]);
+	Int_t nbins =  dBiasTrend[k][i]->GetNbinsX();
+	Double_t lowedge  = dBiasTrend[k][i]->GetBinLowEdge(1);
+	Double_t highedge = dBiasTrend[k][i]->GetBinLowEdge(nbins+1);
+	
+	TH1F* zeros = DrawZero(dBiasTrend[k][i],nbins,lowedge,highedge,1);
+	zeros->Draw("PLsame"); 
+	
       }
-      else dBiasTrend[k][i]->Draw("Le1sames");
+      else dBiasTrend[k][i]->Draw("e1sames");
       if(k==0){
 	lego->AddEntry(dBiasTrend[k][i],LegLabels[i]);
       } 
@@ -445,6 +459,7 @@ void arrangeBiasCanvas(TCanvas *canv,TH1F* dxyPhiMeanTrend[100],TH1F* dzPhiMeanT
   
     lego->Draw();
     pt->Draw("same");
+    pt2->Draw("same");
   }
   
 }
@@ -581,7 +596,7 @@ void arrangeCanvas(TCanvas *canv,TH1F* meanplots[100],TH1F* widthplots[100],Int_
 	Double_t lowedge  = meanplots[i]->GetBinLowEdge(1);
 	Double_t highedge = meanplots[i]->GetBinLowEdge(nbins+1);
 	
-	TH1F* hzero = DrawZero(meanplots[i],nbins,lowedge,highedge);
+	TH1F* hzero = DrawZero(meanplots[i],nbins,lowedge,highedge,2);
 	hzero->Draw("PLsame");
 	
       }
@@ -1280,11 +1295,11 @@ void setStyle(){
 }
 
 /*--------------------------------------------------------------------*/
-TH1F* DrawZero(TH1F *hist,Int_t nbins,Double_t lowedge,Double_t highedge)
+TH1F* DrawZero(TH1F *hist,Int_t nbins,Double_t lowedge,Double_t highedge,Int_t iter)
 /*--------------------------------------------------------------------*/
 { 
 
-  TH1F *hzero = new TH1F(Form("hzero_%s",hist->GetName()),"hzero",nbins,lowedge,highedge);
+  TH1F *hzero = new TH1F(Form("hzero_%s_%i",hist->GetName(),iter),Form("hzero_%s_%i",hist->GetName(),iter),nbins,lowedge,highedge);
   for (Int_t i=0;i<hzero->GetNbinsX();i++){
     hzero->SetBinContent(i,0.);
     hzero->SetBinError(i,0.);
