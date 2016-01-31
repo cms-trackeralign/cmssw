@@ -11,14 +11,14 @@ process = cms.Process("Demo")
 ###################################################################
 # Event source and run selection
 ###################################################################
-# readFiles = cms.untracked.vstring()
-# readFiles.extend(FILESOURCETEMPLATE)
-# process.source = cms.Source("PoolSource",
-#                             fileNames = readFiles ,
-#                             duplicateCheckMode = cms.untracked.string('checkAllFilesOpened')
-#                             )
+readFiles = cms.untracked.vstring()
+readFiles.extend(FILESOURCETEMPLATE)
+process.source = cms.Source("PoolSource",
+                            fileNames = readFiles ,
+                            duplicateCheckMode = cms.untracked.string('checkAllFilesOpened')
+                            )
 
-process.load("Alignment.OfflineValidation.DATASETTEMPLATE");
+#process.load("Alignment.OfflineValidation.DATASETTEMPLATE");
 process.load("FWCore.MessageService.MessageLogger_cfi")
 process.MessageLogger.destinations = ['cout', 'cerr']
 process.MessageLogger.cerr.FwkReport.reportEvery = 1000
@@ -130,81 +130,59 @@ else:
 # Extra corrections not included in the GT
 ####################################################################
 if applyExtraConditions:
+
      import CalibTracker.Configuration.Common.PoolDBESSource_cfi
-     process.SiPixelTemplates = cms.ESSource("PoolDBESSource",CondDBSetup,
-                                             connect = cms.string('frontier://FrontierProd/CMS_CONDITIONS'),
-                                        timetype = cms.string("runnumber"),
-                                             toGet = cms.VPSet(cms.PSet(record = cms.string('SiPixelTemplateDBObjectRcd'),
-                                                                        tag = cms.string('SiPixelTemplateDBObject_38T_v6_offline')
-                                                                        )
-                                                               )
-                                             )
-     process.es_prefer_SiPixelTemplates = cms.ESPrefer("PoolDBESSource", "SiPixelTemplates") 
+     ##### END OF EXTRA CONDITIONS
+ 
+     # ## SiPixel Templates
+     # process.SiPixelTemplates = cms.ESSource("PoolDBESSource",CondDBSetup,
+     #                                         connect = cms.string('frontier://FrontierProd/CMS_CONDITIONS'),
+     #                                         timetype = cms.string("runnumber"),
+     #                                         toGet = cms.VPSet(cms.PSet(record = cms.string('SiPixelTemplateDBObjectRcd'),
+     #                                                                    tag = cms.string('SiPixelTemplateDBObject_38T_v6_offline')
+     #                                                                    )
+     #                                                           )
+     #                                         )
+     # process.es_prefer_SiPixelTemplates = cms.ESPrefer("PoolDBESSource", "SiPixelTemplates") 
     
-#      ## SiStrip BackPlane corrections
-#      process.conditionsInSiStripBackPlaneCorrectionRcd = CalibTracker.Configuration.Common.PoolDBESSource_cfi.poolDBESSource.clone(
-#           connect = cms.string('sqlite_file:/afs/cern.ch/cms/CAF/CMSALCA/ALCA_TRACKERALIGN/MP/MPproduction/mp1535/jobData/jobm/alignments_MP.db'),
-#           toGet = cms.VPSet(cms.PSet(record = cms.string('SiStripBackPlaneCorrectionRcd'),
-#                                      tag = cms.string('SiStripBackPlaneCorrection'),
-#                                      label = cms.untracked.string('deconvolution')
-#                                      )
-#                             )
-#           )
-     
-#      process.prefer_conditionsInSiStripBackPlaneCorrectionRcd = cms.ESPrefer("PoolDBESSource", "conditionsInSiStripBackPlaneCorrectionRcd")
+     # ## SiPixel Lorentz Angle corrections
+     # process.conditionsInSiPixelLorentzAngleRcd = CalibTracker.Configuration.Common.PoolDBESSource_cfi.poolDBESSource.clone(
+     #      connect = cms.string('frontier://FrontierProd/CMS_CONDITIONS'),
+     #      toGet = cms.VPSet(cms.PSet(record = cms.string('SiPixelLorentzAngleRcd'),
+     #                                 tag = cms.string('SiPixelLorentzAngle_v4_offline')
+     #                                 )
+     #                        )
+     #      )
+     # process.prefer_conditionsInSiPixelLorentzAngleRcd = cms.ESPrefer("PoolDBESSource", "conditionsInSiPixelLorentzAngleRcd")
 
-#      ## SiStrip Lorentz Angle corrections
-#      process.conditionsInSiStripLorentzAngleRcd = CalibTracker.Configuration.Common.PoolDBESSource_cfi.poolDBESSource.clone(
-#           connect = cms.string('sqlite_file:/afs/cern.ch/cms/CAF/CMSALCA/ALCA_TRACKERALIGN/MP/MPproduction/mp1535/jobData/jobm/alignments_MP.db'),
-#           toGet = cms.VPSet(cms.PSet(record = cms.string('SiStripLorentzAngleRcd'),
-#                                      tag = cms.string('SiStripLorentzAngle_deco'),
-#                                      label = cms.untracked.string('deconvolution')
-#                                      )
-#                             )
-#           )
-     
-#      process.prefer_conditionsInSiStripLorentzAngleRcd = cms.ESPrefer("PoolDBESSource", "conditionsInSiStripLorentzAngleRcd")
-
-#      # END OF EXTRA CONDITIONS
-     
-# else:
-#      print ">>>>>>>>>> testPVValidation_cfg.py: msg%-i: Not applying extra calibration constants!"
-#      import CalibTracker.Configuration.Common.PoolDBESSource_cfi
-      
-#      ## SiPixel Lorentz Angle corrections
-#      process.conditionsInSiPixelLorentzAngleRcd = CalibTracker.Configuration.Common.PoolDBESSource_cfi.poolDBESSource.clone(
-#           connect = cms.string('frontier://FrontierProd/CMS_COND_31X_PIXEL'),
-#           toGet = cms.VPSet(cms.PSet(record = cms.string('SiPixelLorentzAngleRcd'),
-#                                      tag = cms.string('SiPixelLorentzAngle_v03_offline')
-#                                      )
-#                             )
-#           )
-     
-#      process.prefer_conditionsInSiPixelLorentzAngleRcd = cms.ESPrefer("PoolDBESSource", "conditionsInSiPixelLorentzAngleRcd")
+     # ## SiStrip BackPlane corrections
+     # process.conditionsInSiStripBackPlaneCorrectionRcd = CalibTracker.Configuration.Common.PoolDBESSource_cfi.poolDBESSource.clone(
+     #      connect = cms.string('frontier://FrontierProd/CMS_CONDITIONS'),
+     #      toGet = cms.VPSet(cms.PSet(record = cms.string('SiStripBackPlaneCorrectionRcd'),
+     #                                 tag = cms.string('SiStripBackPlaneCorrection_deco_GR10_v4_offline'),
+     #                                 label = cms.untracked.string('deconvolution')
+     #                                 )
+     #                        )
+     #      )
     
-#      ## SiStrip BackPlane corrections
-#      process.conditionsInSiStripBackPlaneCorrectionRcd = CalibTracker.Configuration.Common.PoolDBESSource_cfi.poolDBESSource.clone(
-#           connect = cms.string('frontier://FrontierPrep/CMS_COND_POPCONLOG'),
-#           toGet = cms.VPSet(cms.PSet(record = cms.string('SiStripBackPlaneCorrectionRcd'),
-#                                      tag = cms.string('SiStripBackPlaneCorrection_deco_GR10_v3_offline'),
-#                                      label = cms.untracked.string('deconvolution')
-#                                      )
-#                             )
-#           )
-     
-#      process.prefer_conditionsInSiStripBackPlaneCorrectionRcd = cms.ESPrefer("PoolDBESSource", "conditionsInSiStripBackPlaneCorrectionRcd")
+     # process.prefer_conditionsInSiStripBackPlaneCorrectionRcd = cms.ESPrefer("PoolDBESSource", "conditionsInSiStripBackPlaneCorrectionRcd")
 
-#      ## SiStrip Lorentz Angle corrections
-#      process.conditionsInSiStripLorentzAngleRcd = CalibTracker.Configuration.Common.PoolDBESSource_cfi.poolDBESSource.clone(
-#           connect = cms.string('sqlite_file:/afs/cern.ch/cms/CAF/CMSALCA/ALCA_TRACKERALIGN/MP/MPproduction/mp1025/SiStripLorentzAngleDeco_GR10_v1_offline_BPCorrected.db'),
-#           toGet = cms.VPSet(cms.PSet(record = cms.string('SiStripLorentzAngleRcd'),
-#                                      tag = cms.string('SiStripLorentzAngleDeco_GR10_v1_offline_BPCorrected'),
-#                                      label = cms.untracked.string('deconvolution')
-#                                      )
-#                             )
-#           )
+     # ## SiStrip Lorentz Angle corrections
+     # process.conditionsInSiStripLorentzAngleRcd = CalibTracker.Configuration.Common.PoolDBESSource_cfi.poolDBESSource.clone(
+     #      connect = cms.string('frontier://FrontierProd/CMS_CONDITIONS'),
+     #      toGet = cms.VPSet(cms.PSet(record = cms.string('SiStripLorentzAngleRcd'),
+     #                                 tag = cms.string('SiStripLorentzAngleDeco_v3_offline'),
+     #                                 label = cms.untracked.string('deconvolution')
+     #                                 )
+     #                        )
+     #      )
+     # process.prefer_conditionsInSiStripLorentzAngleRcd = cms.ESPrefer("PoolDBESSource", "conditionsInSiStripLorentzAngleRcd")
+
+else:
+     print ">>>>>>>>>> testPVValidation_cfg.py: msg%-i: Not applying extra calibration constants!"
      
-#      process.prefer_conditionsInSiStripLorentzAngleRcd = cms.ESPrefer("PoolDBESSource", "conditionsInSiStripLorentzAngleRcd")
+
+
      
 ####################################################################
 # Load and Configure event selection
