@@ -375,7 +375,7 @@ To merge the outcome of all validation procedures run TkAlMerge.sh in your valid
 
             if job["dependencies"]:
                 dag.write("\n")
-                dag.write("PARENT {} CHILD {}".format(job["name"], " ".join(job["dependencies"])))
+                dag.write("PARENT {} CHILD {}".format(" ".join(job["dependencies"]), job["name"]))
 
             dag.write("\n\n")
 
