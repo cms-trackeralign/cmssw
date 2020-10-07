@@ -56,9 +56,11 @@ def main():
 
     validationDir = os.path.abspath(config["name"])
     exeDir = "{}/executables".format(validationDir)
+    cmsconfigDir =  "{}/cmsConfigs".format(validationDir)
 
     subprocess.call(["mkdir", "-p", validationDir] + ((["-v"] if args.verbose else [])))
     subprocess.call(["mkdir", "-p", exeDir] + (["-v"] if args.verbose else []))
+    subprocess.call(["mkdir", "-p", cmsconfigDir] + (["-v"] if args.verbose else []))
 
 ####################--- Functions ---############################
 def createMergeScript( path, validations, options ):
@@ -368,7 +370,10 @@ To merge the outcome of all validation procedures run TkAlMerge.sh in your valid
             subprocess.call("cp -f $(which {}) {}".format(job["exe"], exeDir) + (" -v" if args.verbose else ""), shell = True)
             subprocess.call(["ln", "-fs", "{}/{}".format(exeDir, job["exe"]), job["dir"]] + (["-v"] if args.verbose else []))
             if "cms-config" in job:
-                subprocess.call(["ln", "-fs", job["cms-config"], "{}/validation_cfg.py".format(job["dir"])] + (["-v"] if args.verbose else []))
+                cmsConfig = job["cms-config"].split("/")[-1]
+
+                subprocess.call(["cp", "-f", job["cms-config"], "{}/{}".format(cmsconfigDir, cmsConfig)] + (["-v"] if args.verbose else []))
+                subprocess.call(["ln", "-fs", "{}/{}".format(cmsconfigDir, cmsConfig), "{}/validation_cfg.py".format(job["dir"])] + (["-v"] if args.verbose else []))
 
             ##Write local config file 
             with open("{}/validation.json".format(job["dir"]), "w") as jsonFile:
