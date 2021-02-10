@@ -424,7 +424,8 @@ To merge the outcome of all validation procedures run TkAlMerge.sh in your valid
                     "error  = condor.err",
                     "log    = condor.log",
                     'requirements = (OpSysAndVer =?= "CentOS7")',
-                    '+JobFlavour = "{}"'.format(args.job_flavour),
+                    # Take given flavour for the job, except if overwritten in job config
+                    '+JobFlavour = "{}"'.format(args.job_flavour if not 'flavour' in job else job['flavour']),
                     '+AccountingGroup = "group_u_CMS.CAF.ALCA"',
                     "queue"
                 ]
