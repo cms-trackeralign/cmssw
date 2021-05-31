@@ -414,12 +414,6 @@ To merge the outcome of all validation procedures run TkAlMerge.sh in your valid
 
                 json.dump(job["config"], jsonFile, indent=4)
 
-            with open("{}/validation.yaml".format(job["dir"]), "w") as yamlFile:
-                if args.verbose:
-                    print("Write local yaml config: '{}'".format("{}/validation.yaml".format(job["dir"])))     
-
-                yaml.dump(job["config"], yamlFile, default_flow_style=False, width=float("inf"), indent=4)
-
             ##Write shell executable use in condor job
             with open("{}/run.sh".format(job["dir"]), "w") as runFile:
                 if args.verbose:
