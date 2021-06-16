@@ -1,15 +1,17 @@
-<flags CXXFLAGS="-g -Wall -DDEBUG -O3 -Wall -std=c++17 -lASImage" />
-
-<use name="root" />
-<use name="rootgraphics"/>
-<use name="boost" />
+<flags CXXFLAGS="-g -Wall -O3 -Wall -std=c++17 -lASImage" />
+<use name="boost"/>
 <use name="boost_program_options"/>
 <use name="boost_system"/>
 <use name="boost_filesystem"/>
 <use name="Alignment/OfflineValidation"/>
-<lib name="stdc++fs" />
+<use name="rootgraphics"/>
+<use name="rootmath"/>
+<use name="rootcore"/>
+<use name="roofit"/>
+<lib name="stdc++fs"/>
 <bin name="DMRmerge" file="DMRmerge.cc,Options.cc" />
 <bin name="PVmerge" file="PVmerge.cc,Options.cc" />
+<bin name="Zmumumerge" file="Zmumumerge.cc,Options.cc" />
 <bin name="DMRtrends" file="DMRtrends.cc" />
 <bin name="SplitVmerge" file="SplitVmerge.cc,Options.cc" />
 <bin name="GCP" file="GCP.cc,Options.cc" />

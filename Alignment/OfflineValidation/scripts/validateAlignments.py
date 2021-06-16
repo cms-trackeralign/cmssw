@@ -12,6 +12,7 @@ import sys
 
 import Alignment.OfflineValidation.TkAlAllInOneTool.GCP as GCP
 import Alignment.OfflineValidation.TkAlAllInOneTool.DMR as DMR
+import Alignment.OfflineValidation.TkAlAllInOneTool.Zmumu as Zmumu
 import Alignment.OfflineValidation.TkAlAllInOneTool.PV as PV
 import Alignment.OfflineValidation.TkAlAllInOneTool.SplitV as SplitV
 import Alignment.OfflineValidation.TkAlAllInOneTool.JetHT as JetHT
@@ -76,7 +77,7 @@ def main():
 
     ##Digest the LFS path
     if 'LFS' in config: config['LFS'] = digest_path(config['LFS'])
-        
+
     ##Create working directory
     if os.path.isdir(config["name"]) and not args.force:
 	raise Exception("Validation directory '{}' already exists! Please choose another name for your directory.".format(config["name"]))	
@@ -108,6 +109,9 @@ def main():
 
         elif validation == "SplitV":
             jobs.extend(SplitV.SplitV(config, validationDir))
+
+        elif validation == "Zmumu":
+            jobs.extend(Zmumu.Zmumu(config, validationDir))
 
         elif validation == "JetHT":
             jobs.extend(JetHT.JetHT(config, validationDir))
