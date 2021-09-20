@@ -65,7 +65,7 @@ def TkAlMap_plots(config):
         if plot_png: TkMap_pixel.save(out_dir=plot_dir, extension='png')
         TkMap_pixel.plot_variable_distribution(out_dir=plot_dir)
 
-        TkMap_strips.set_var(var)
+        TkMap_strips.set_var(var, var_range=var_range)
         TkMap_strips.analyse()
         TkMap_strips.save(out_dir=plot_dir)
         if plot_png: TkMap_strips.save(out_dir=plot_dir, extension='png')

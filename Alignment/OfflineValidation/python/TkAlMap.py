@@ -4,6 +4,7 @@ import copy
 import math
 import time
 import ctypes
+import argparse
 from array import array
 import FWCore.ParameterSet.Config as cms
 from Alignment.OfflineValidation.DivergingColor import DivergingColor
@@ -42,8 +43,9 @@ KNOWN_VARIABLES = {
         'range': [-200., 200.],
         },
     'rdphi': {
-        'name' : 'r #Delta#phi',
-        'units': '#mum rad',
+        'name' : 'r#Delta#phi',
+        #'units': '#mum rad',
+        'units': '#mum',
         'scale': 10000.,
         'range': [-200., 200.],
         },
@@ -108,6 +110,7 @@ KNOWN_VARIABLES = {
         'range': [-100., 100.],
         },  
 }
+EVENT_INFO = ' '
 
 #ROOT.gStyle.SetLineScalePS(1)
 
@@ -151,7 +154,17 @@ def read_TPLfile(file_name):
 class TkAlMap:
 
     #def __init__(self, variable, title, root_file, two_sigma_cap=False, width=1500, height=800, GEO_file='TkMap_design_cfg.py', tracker='full'):
-    def __init__(self, variable, title, root_file, use_default_range=False, two_sigma_cap=False, height=1400, GEO_file='TkAlMapDesign_phase1_cfg.py', tracker='full', palette=2, do_tanh=False, check_tracker=True):
+    def __init__(
+            self, 
+            variable, title, root_file,
+            event_info=EVENT_INFO, 
+            GEO_file='TkAlMapDesign_phase1_cfg.py', 
+            height=1400, tracker='full', palette=2, 
+            use_default_range=False, two_sigma_cap=False, do_tanh=False, check_tracker=True, 
+            indicate_bad_modules=False, check_module_quality=False, skip_bad_modules=False,
+            is_preliminary=True, is_simulation=False,
+            sideway_title=False
+            ):
         ROOT.gStyle.SetLineScalePS(1)
 
         # Configuration parameters
@@ -160,10 +173,17 @@ class TkAlMap:
         self.width         = height 
         self.height        = height
         self.title         = title
+        self.sideway_title = sideway_title
+        self.event_info    = event_info
         self.default_range = use_default_range
         self.two_sigma_cap = two_sigma_cap
         self.root_file     = root_file
         self.do_tanh       = do_tanh
+        self.do_bad_mod    = indicate_bad_modules
+        self.check_mod_q   = check_module_quality
+        self.skip_bad_mod  = skip_bad_modules
+        self.is_pre        = is_preliminary
+        self.is_sim        = is_simulation
 
         # Value Initialization
         self.max_val           = None
@@ -171,10 +191,16 @@ class TkAlMap:
         self.color_bar_colors  = {}
         self.tree              = None
         self.is_cleaned        = False
+        self.canvas            = None
+        self.bad_modules       = []
+        self.title_h           = 0
 
         # Internal parameters    
         #self.data_path = 'Alignment-OfflineValidation/TkAlMap/'
         self.data_path = 'Alignment/OfflineValidation/data/TkAlMap/'
+        #self.data_path = 'Alignment/OfflineValidation/data/TkAlMap_inv/'
+        #self.data_path = 'Alignment/OfflineValidation/data/TkAlMap_inv_xmin/'
+        #self.data_path = 'Alignment/OfflineValidation/data/TkAlMap_inv_pix/'
         self.cfg_path = 'Alignment/OfflineValidation/python/TkAlMap_cfg/'
 
         # Colorbar stuff
@@ -188,12 +214,13 @@ class TkAlMap:
         if check_tracker: self.detect_tracker_version()
         self.load_geometry()
         self.set_colorbar_colors()
+        self.set_canvas()
 
-    def set_var(self, var, var_range=[None, None]):
+    def set_var(self, var, units='cm', var_range=[None, None]):
         print('TkAlMap: setting variable to '+var)
         self.var = var
         self.var_name = var
-        self.var_units = 'cm'
+        self.var_units = units
         self.var_scale = 1.
         self.var_min = var_range[0]
         self.var_max = var_range[1]
@@ -208,6 +235,7 @@ class TkAlMap:
     def set_canvas(self):
         canv_name = 'canvas_'+self.tracker+'_'+self.var
         if self.two_sigma_cap: canv_name += '_cap'
+        #if not self.canvas is None: self.canvas.Destructor() => SegVio, Delete() is not allowed
         self.canvas = ROOT.TCanvas(canv_name, 'TkAlMap '+self.var+' canvas', self.width, self.height)
         print('Actual w: '+str(self.canvas.GetWw())+', Actual h: '+str(self.canvas.GetWh()))
 
@@ -216,6 +244,7 @@ class TkAlMap:
         self.load_var()
         self.prepare_map_colors()
         self.fill_colors()
+        if self.skip_bad_mod: self.mask_bad_modules()
 
     def prepare_map_colors(self):
         print('TkAlMap: preparing map colors')
@@ -246,7 +275,7 @@ class TkAlMap:
                 col.SetRGB((r+0.)/255., (g+0.)/255., (b+0.)/255.)
                 self.col_dic[idx] = col
             except:
-                self.col_dic[idx] = ROOT.TColor(col_idx, (r+0.)/255., (g+0.)/255., (b+0.)/255.)
+                self.col_dic[idx] = ROOT.TColor(col_idx, (r+0.)/255., (g+0.)/255., (b+0.)/255., str(col_idx))
             #self.palette.append(col_idx)
         print('TkAlMap: map contains '+str(len(self.colors))+' colors')
      
@@ -255,7 +284,8 @@ class TkAlMap:
         pal_str = 'TkAlMap: setting the palette to '+str(palette)
         if palette == 1: pal_str += ' (rainbow)'
         elif palette == 2: pal_str += ' (B->R diverging)'
-        else: raise ValueError('TkAlMap: unkown palette value '+str(palette)+', allowed values are 1 and 2')
+        elif palette == 3: pal_str += ' (W->R diverging)'
+        else: raise ValueError('TkAlMap: unkown palette value '+str(palette)+', allowed values are 1,2 and 3')
         print(pal_str)
         #ROOT.gstyle.SetPalette(len(self.colors), self.colors)
         #ROOT.gStyle.SetPalette(len(self.palette), self.palette)
@@ -298,12 +328,18 @@ class TkAlMap:
                 b = 0
             return r, g, b 
         elif self.palette == 2:
-            red   = [59,   76, 192]
-            blue  = [180,   4,  38]
+            blue  = [59,   76, 192]
+            red   = [180,   4,  38]
             white = [255, 255, 255] 
-            r, g, b = DivergingColor(red, blue, white, value_frac) 
+            r, g, b = DivergingColor(blue, red, white, value_frac) 
             return r, g, b
-        else: raise ValueError('TkAlMap: unkown palette value '+str(palette)+', allowed values are 1 and 2')
+        elif self.palette == 3:
+            #lred  = [255, 255, 255]
+            red   = [120, 4, 45]
+            white = [255, 255, 255] 
+            r, g, b = DivergingColor(white, red, white, value_frac) 
+            return r, g, b
+        else: raise ValueError('TkAlMap: unkown palette value '+str(palette)+', allowed values are 1,2 and 3')
 
     def get_color_rgb_idx(self, val):
         r, g, b = self.get_color_rgb(val)
@@ -316,6 +352,8 @@ class TkAlMap:
         #self.set_palette()
         for module in self.mod_val_dict:
             if module in self.TkAlMap_TPL_dict:
+                if self.skip_bad_mod:
+                    if module in self.bad_modules: continue
                 val = self.mod_val_dict[module]
                 cap_val = val
                 if cap_val > self.max_val: cap_val = self.max_val
@@ -329,6 +367,14 @@ class TkAlMap:
                 #self.TkAlMap_TPL_dict[module].SetFillColor(TEST_COLOR_IDX)
             ####else: print('Warning: Unknown module '+str(module))
 
+    def mask_bad_modules(self):
+        n_bad = 0
+        for module in self.bad_modules:
+            if module in self.TkAlMap_TPL_dict:
+                n_bad +=1
+                self.TkAlMap_TPL_dict[module].SetFillColor(920+1) # kGray = 920
+        print('TkAlMap: masked '+str(n_bad)+' modules')
+
     def set_colorbar_axis(self):
         print('TkAlMap: setting color bar axis')
         b_x1 = self.image_x1
@@ -340,9 +386,15 @@ class TkAlMap:
         self.color_bar_axis.SetName('color_bar_axis')
         self.color_bar_axis.SetLabelSize(0.02)
         self.color_bar_axis.SetTickSize(0.01)
-        if self.two_sigma_cap and not self.default_range: self.color_bar_axis.SetTitle('{#mu - 2#sigma #leq '+self.var_name+' #leq #mu + 2#sigma} ['+self.var_units+']')
-        elif self.default_range: self.color_bar_axis.SetTitle('{'+str(self.min_val)+' #leq '+self.var_name+' #leq '+str(self.max_val)+'} ['+self.var_units+']')
+        min_str = str(self.min_val)
+        if min_str.endswith('.0'): min_str = min_str[:-2]
+        max_str = str(self.max_val)
+        if max_str.endswith('.0'): max_str = max_str[:-2]
+        if self.two_sigma_cap and not self.default_range: self.color_bar_axis.SetTitle('{#mu - 2#sigma #leq '+self.var_name+' #leq #mu + 2#sigma} ('+self.var_units+')')
+        #elif self.default_range: self.color_bar_axis.SetTitle('{'+min_str+' #leq '+self.var_name+' #leq '+max_str+'} ('+self.var_units+')')
+        elif self.default_range: self.color_bar_axis.SetTitle(self.var_name+' ['+self.var_units+']')
         else: self.color_bar_axis.SetTitle(self.var_name+' ['+self.var_units+']')
+        #self.color_bar_axis.SetTitleSize(0.025*self.text_factor)
         self.color_bar_axis.SetTitleSize(0.025)
 
     def set_colorbar_colors(self):
@@ -378,7 +430,7 @@ class TkAlMap:
                 col.SetRGB((r+0.)/255., (g+0.)/255., (b+0.)/255.)
                 self.color_bar_colors[col_idx] = col
             except:
-                self.color_bar_colors[col_idx] = ROOT.TColor(col_idx, (r+0.)/255., (g+0.)/255., (b+0.)/255.)
+                self.color_bar_colors[col_idx] = ROOT.TColor(col_idx, (r+0.)/255., (g+0.)/255., (b+0.)/255., str(col_idx))
             x2 = x1 + b_dx 
             y2 = y1 + b_dy + b_width 
             x = array('d', [x1, x1, x2, x2])
@@ -408,7 +460,16 @@ class TkAlMap:
 
         if self.tree is None: raise ValueError('The tree "'+tree_name+'" was not found in file "'+self.root_file+'"')
         
+    def load_bad_modules(self, in_file):
+        o_file = open(in_file, 'r')
+        lines = o_file.readlines()
+        o_file.close()
 
+        for line in lines:
+            if '#' in line: continue
+            mod = line.replace(' ', '').replace('\n', '')
+            if mod == '': continue
+            self.bad_modules.append(int(mod))
 
     def load_var(self):
         print('TkAlMap: loading variable values ')
@@ -424,7 +485,12 @@ class TkAlMap:
 
         self.mod_val_dict = {}
         self.val_list = []
+        checked_mod_q = False
+        has_mod_q = True
         for event in self.tree:
+            if self.check_mod_q and not checked_mod_q:
+                if not hasattr(event, 'badModuleQuality'): has_mod_q = False
+                checked_mod_q = True
             module = event.id
             var = self.var
             if var == 'rdphi':
@@ -434,10 +500,21 @@ class TkAlMap:
             val *= self.var_scale
             self.mod_val_dict[module] = val
             #if val not in self.val_list: self.val_list.append(val)
-            if module in self.TkAlMap_TPL_dict: self.val_list.append(val)
+            #if module in self.TkAlMap_TPL_dict: self.val_list.append(val)
             ####else:
             ####    if 'full' in self.tracker:
             ####        print('Warning: Unknown module '+str(module))
+
+            # check internal mod quality
+            if self.check_mod_q and has_mod_q: 
+                if getattr(event, 'badModuleQuality'): self.bad_modules.append(module)
+
+            # skip bad modules if needed
+            if self.skip_bad_mod:
+                if not module in self.bad_modules:
+                    if module in self.TkAlMap_TPL_dict: self.val_list.append(val)
+            else:
+                if module in self.TkAlMap_TPL_dict: self.val_list.append(val)
         #r_file.Close()
         if len(self.val_list) == 0:
             print('Warning: no values filled, 0 moduleId\'s matched')
@@ -512,6 +589,7 @@ class TkAlMap:
         MapStructure = var['TkMap_GEO']
         
         all_modules = {}
+        all_arrows = {}
         all_text = {}
         x_max = -9999.
         y_max = -9999.
@@ -529,8 +607,14 @@ class TkAlMap:
                         continue
                     if 'latex' in MapStructure[det][sub][part]:
                         all_text[det+'_'+sub+'_'+part] = MapStructure[det][sub][part]['latex']
-                    #TPL_file = source_path + self.data_path +MapStructure[det][sub][part]['file']
-                    TPL_file = cms.FileInPath(self.data_path +MapStructure[det][sub][part]['file'])
+                    if 'arrows' in MapStructure[det][sub][part]:
+                        if 'full' in self.tracker:
+                            # for full tracker only take arrows from strips
+                            if 'strips' in det: all_arrows[det+'_'+sub+'_'+part] = MapStructure[det][sub][part]['arrows']
+                        else: 
+                            all_arrows[det+'_'+sub+'_'+part] = MapStructure[det][sub][part]['arrows']
+                    TPL_file = source_path + self.data_path +MapStructure[det][sub][part]['file']
+                    #TPL_file = cms.FileInPath(self.data_path +MapStructure[det][sub][part]['file'])
                     TPL_dict = read_TPLfile(TPL_file)
                     for module in TPL_dict:
                         x_canv = []
@@ -546,11 +630,17 @@ class TkAlMap:
                         TPL_dict[module]['y'] = y_canv
                     all_modules.update(TPL_dict)
 
-        r_margin = 3
-        l_margin = 3
-        #t_margin = 15
-        t_margin = 11
-        b_margin = 8
+        if not self.sideway_title:
+            r_margin = 3
+            l_margin = 3
+            t_margin = 3 + 12
+            #t_margin = 11
+            b_margin = 3 + 5
+        else:
+            r_margin = 3
+            l_margin = 3 + 8
+            t_margin = 3
+            b_margin = 3 + 5
 
         x_max += r_margin
         x_min -= l_margin
@@ -569,6 +659,8 @@ class TkAlMap:
         else:
             y_scale = y_range
             x_scale = (self.width + 0.)/(self.height + 0.)*y_range
+
+        # Set relative coordinates TPolyLines
         self.TkAlMap_TPL_dict = {} 
         for module in all_modules:
             x = array('d', [])
@@ -594,7 +686,13 @@ class TkAlMap:
 
         self.x_scale = x_scale
         self.y_scale = y_scale
+        print('xy scale: ', x_scale, y_scale)
+        self.text_factor = 85./(self.y_scale + 0.)
+        if 'pixel' in self.tracker and 'phase0' in self.GEO_file: self.text_factor *= 2.
+        #self.text_factor = 148./max(self.x_scale, self.y_scale)
+        #self.text_factor = 1.
 
+        # Set relative coordinates text
         #TL = ROOT.TLatex()
         #TL.SetTextSize(0.025)
         self.TkAlMap_text_dict = {}
@@ -609,62 +707,209 @@ class TkAlMap:
             #TL.SetTextAlign(all_text[key]['alignment'])
             #TL.DrawLatex(x, y, all_text[key]['text'])
 
+        # Set relative coordinates arrows and marks
+        self.TkAlMap_arrow_dict = {}
+        self.TkAlMap_arrow_marks_dict = {}
+        for key in all_arrows:
+            x_arr = copy.deepcopy(all_arrows[key][0])
+            y_arr = copy.deepcopy(all_arrows[key][1])
+
+            x_arr['x1'] = (all_arrows[key][0]['x1'] - x_min + 0.)/(x_scale + 0.)           
+            x_arr['y1'] = (all_arrows[key][0]['y1'] - y_min + 0.)/(y_scale + 0.)           
+            x_arr['x2'] = (all_arrows[key][0]['x2'] - x_min + 0.)/(x_scale + 0.)           
+            x_arr['y2'] = (all_arrows[key][0]['y2'] - y_min + 0.)/(y_scale + 0.)           
+            x_arr['label_pos'][0] = (all_arrows[key][0]['label_pos'][0] - x_min + 0.)/(x_scale + 0.)           
+            x_arr['label_pos'][1] = (all_arrows[key][0]['label_pos'][1] - y_min + 0.)/(y_scale + 0.)           
+
+            y_arr['x1'] = (all_arrows[key][1]['x1'] - x_min + 0.)/(x_scale + 0.)           
+            y_arr['y1'] = (all_arrows[key][1]['y1'] - y_min + 0.)/(y_scale + 0.)           
+            y_arr['x2'] = (all_arrows[key][1]['x2'] - x_min + 0.)/(x_scale + 0.)           
+            y_arr['y2'] = (all_arrows[key][1]['y2'] - y_min + 0.)/(y_scale + 0.)           
+            y_arr['label_pos'][0] = (all_arrows[key][1]['label_pos'][0] - x_min + 0.)/(x_scale + 0.)           
+            y_arr['label_pos'][1] = (all_arrows[key][1]['label_pos'][1] - y_min + 0.)/(y_scale + 0.)           
+
+            self.TkAlMap_arrow_dict[key] = {}
+            self.TkAlMap_arrow_dict[key]['rel_arr'] = [x_arr, y_arr]
+            self.TkAlMap_arrow_dict[key]['x_arr'] = ROOT.TArrow(x_arr['x1'], x_arr['y1'], x_arr['x2'], x_arr['y2'], 0.05, '|>')
+            self.TkAlMap_arrow_dict[key]['y_arr'] = ROOT.TArrow(y_arr['x1'], y_arr['y1'], y_arr['x2'], y_arr['y2'], 0.05, '|>')
+
+            # Marks
+            self.TkAlMap_arrow_marks_dict[key] = []
+            for arr in all_arrows[key]:
+                if not 'marks' in arr: continue
+                for mark in arr['marks']:
+                    tmp_mark = copy.deepcopy(mark)
+                    tmp_mark['x1'] = (mark['x1'] - x_min + 0.)/(x_scale + 0.) 
+                    tmp_mark['x2'] = (mark['x2'] - x_min + 0.)/(x_scale + 0.) 
+                    tmp_mark['y1'] = (mark['y1'] - y_min + 0.)/(y_scale + 0.) 
+                    tmp_mark['y2'] = (mark['y2'] - y_min + 0.)/(y_scale + 0.)
+                    tmp_mark['label_pos'][0] = (mark['label_pos'][0] - x_min + 0.)/(x_scale + 0.)
+                    tmp_mark['label_pos'][1] = (mark['label_pos'][1] - y_min + 0.)/(y_scale + 0.)
+
+                    line_dict = {}
+                    line_dict['line'] = ROOT.TLine(tmp_mark['x1'], tmp_mark['y1'], tmp_mark['x2'], tmp_mark['y2'])
+                    line_dict['label'] = mark['label'] 
+                    line_dict['alignment'] = mark['alignment'] 
+                    line_dict['label_pos'] = tmp_mark['label_pos']
+                    self.TkAlMap_arrow_marks_dict[key].append(line_dict)
+                     
+
 #### Titles and info
     def draw_title(self):
         TL = ROOT.TLatex()
-        TL.SetTextSize(0.035)
+        #TL.SetTextSize(0.035)
+        TL.SetTextSize(0.03*self.text_factor)
         TL.SetTextFont(42)
-        TL.SetTextAlign(13)
-        x1 = self.image_x1
-        y1 = 1-(5./(self.y_scale+0.))
+        #TL.SetTextFont(40)
+
+        # Extract title height
+        w_t = ctypes.c_uint(0)
+        h_t = ctypes.c_uint(0)
+        TL.GetTextExtent(w_t, h_t, self.title)
+        split_count = 1
+        if '#splitline' in self.title: split_count = len(self.title.split('#splitline'))
+        self.title_h = split_count*int(h_t.value) 
+
+        if not self.sideway_title:
+            TL.SetTextAlign(13)
+            x1 = self.image_x1
+            if self.tracker == 'full': y1 = 1-(5/(self.y_scale+0.))
+            elif 'pixel' in self.tracker and 'phase0' in self.GEO_file: y1 = 1-(6/(self.y_scale+0.))
+            else: y1 = 1-(4./(self.y_scale+0.))
+        else:
+            TL.SetTextAngle(90)
+           
+            x1 = self.image_x1 - (self.title_h+0.)/(self.width+0.) - 3./(self.x_scale+0.)
+            y1 = self.image_y2
+            TL.SetTextAlign(33) #33
         self.canvas.cd()
         TL.DrawLatex(x1, y1, self.title)
          
     def draw_cms_prelim(self):
         TL = ROOT.TLatex()
-        factor = 1. / 0.82
-        TL.SetTextSize(0.035*factor)
-        TL.SetTextAlign(11)
+        #factor = 1. / 0.82
+        #TL.SetTextSize(0.035*factor)
+        TL.SetTextSize(0.0427*self.text_factor)
         TL.SetTextFont(61)
 
-        w_cms = ctypes.c_uint(0)
-        h_cms = ctypes.c_uint(0)
-        TL.GetTextExtent(w_cms, h_cms, 'CMS')
-        x1 = self.image_x1
-        y1 = 1. - (h_cms.value+0.)/(self.height+0.) - (1./(self.y_scale+0.))
-        self.canvas.cd()
-        TL.DrawLatex(x1, y1, 'CMS')
+        if not self.sideway_title:
+            TL.SetTextAlign(11)
+
+            w_cms = ctypes.c_uint(0)
+            h_cms = ctypes.c_uint(0)
+            TL.GetTextExtent(w_cms, h_cms, 'CMS')
+            x1 = self.image_x1
+            y1 = 1. - (h_cms.value+0.)/(self.height+0.) - (1./(self.y_scale+0.))
+            self.canvas.cd()
+            TL.DrawLatex(x1, y1, 'CMS')
   
-        TL.SetTextSize(0.035)
-        TL.SetTextFont(42)
-        x1_prel = x1 + 1.1*(w_cms.value+0.)/(self.width+0.)
-        TL.DrawLatex(x1_prel, y1, '#it{Preliminary}')
-        
-        self.draw_event_info(y1)
+            TL.SetTextSize(0.035*self.text_factor)
+            TL.SetTextFont(42)
+            x1_prel = x1 + 1.1*(w_cms.value+0.)/(self.width+0.)
+            if self.is_pre: TL.DrawLatex(x1_prel, y1, '#it{Preliminary}')
+            elif self.is_sim: TL.DrawLatex(x1_prel, y1, '#it{Simulation}')        
+
+            self.draw_event_info(y1)
+        else:
+            TL.SetTextAngle(90)
+            TL.SetTextAlign(33)
+            #TL.SetTextAlign(31)
+            #TL.SetTextAlign(13)
+            
+            w_cms = ctypes.c_uint(0)
+            h_cms = ctypes.c_uint(0)
+            TL.GetTextExtent(w_cms, h_cms, 'CMS')
+            x1 = self.image_x1 - (self.title_h+0.)/(self.width+0.) - 3./(self.x_scale+0.)
+            y1 = self.image_y1 
+            self.canvas.cd()
+            TL.DrawLatex(x1, y1, 'CMS')
+
+            TL.SetTextSize(0.035*self.text_factor)
+            TL.SetTextFont(42)
+            y1_prel = y1 + 1.1*(h_cms.value+0.)/(self.height+0.)
+            if self.is_pre: TL.DrawLatex(x1_prel, y1, '#it{Preliminary}')
+            elif self.is_sim: TL.DrawLatex(x1_prel, y1, '#it{Simulation}')        
+            
 
     def draw_event_info(self, y):
         TL = ROOT.TLatex()
-        TL.SetTextSize(0.035)
+        TL.SetTextSize(0.035*self.text_factor)
         TL.SetTextFont(42)
-        TL.SetTextAlign(31)
 
-        x1 = self.image_x2
-        y1 = y
+        if 'pixel' in self.tracker and 'phase0' in self.GEO_file:
+            TL.SetTextAlign(13)
+            x1 = self.image_x1
+            y1 = y - (0.4/(self.y_scale+0.))
+        else:
+            TL.SetTextAlign(31)
+            x1 = self.image_x2
+            y1 = y
         self.canvas.cd()
-        TL.DrawLatex(x1, y1, 'pp collisions 13TeV')
+        TL.DrawLatex(x1, y1, self.event_info)
+
+    def draw_all_arrows(self):
+        #self.canvas.cd()
+        TL = ROOT.TLatex()
+        #print('scales: '+str(self.x_scale)+','+str(self.y_scale))
+        TL.SetTextSize(0.020*self.text_factor)
+        for key in self.TkAlMap_arrow_dict:
+            self.TkAlMap_arrow_dict[key]['x_arr'].SetArrowSize(0.006) 
+            self.TkAlMap_arrow_dict[key]['y_arr'].SetArrowSize(0.006)
+            self.TkAlMap_arrow_dict[key]['x_arr'].SetLineWidth(3) 
+            self.TkAlMap_arrow_dict[key]['y_arr'].SetLineWidth(3)
+            self.TkAlMap_arrow_dict[key]['x_arr'].SetOption('|>') 
+            self.TkAlMap_arrow_dict[key]['y_arr'].SetOption('|>')
+            self.TkAlMap_arrow_dict[key]['x_arr'].Draw() 
+            self.TkAlMap_arrow_dict[key]['y_arr'].Draw()
+            x_arr_d = self.TkAlMap_arrow_dict[key]['rel_arr'][0]
+            y_arr_d = self.TkAlMap_arrow_dict[key]['rel_arr'][1]
+            TL.SetTextAlign(x_arr_d['alignment'])
+            TL.DrawLatex(x_arr_d['label_pos'][0], x_arr_d['label_pos'][1], x_arr_d['label'])
+            TL.SetTextAlign(y_arr_d['alignment'])
+            TL.DrawLatex(y_arr_d['label_pos'][0], y_arr_d['label_pos'][1], y_arr_d['label'])
+
+        TL.SetTextSize(0.015*self.text_factor)
+        for key in self.TkAlMap_arrow_dict:
+            # Draw marks
+            for mark in self.TkAlMap_arrow_marks_dict[key]:
+                mark['line'].SetLineWidth(3)
+                mark['line'].Draw()
+                TL.SetTextAlign(mark['alignment'])
+                TL.DrawLatex(mark['label_pos'][0], mark['label_pos'][1], mark['label'])
+
+    def indicate_bad_modules(self):
+        bad_col_idx = self.start_color_idx - 1
+        #bad_col_rgb = [85, 148, 146] #=> grey-ish cyan-ish visible enough?
+        bad_col_rgb = [223, 223, 87] #=> grey-ish yellow visible enough?
+        try:
+            col = ROOT.gROOT.GetColor(bad_col_idx)
+            col.SetRGB((bad_col_rgb[0]+0.)/255., (bad_col_rgb[1]+0.)/255., (bad_col_rgb[2]+0.)/255.)
+            self.bad_col = col
+        except:
+            self.bad_col = ROOT.TColor(bad_col_idx, (bad_col_rgb[0]+0.)/255., (bad_col_rgb[1]+0.)/255., (bad_col_rgb[2]+0.)/255., str(bad_col_idx))
         
+        n_bad = 0
+        for module in self.bad_modules:
+            if module in self.TkAlMap_TPL_dict:
+               n_bad += 1
+               #self.TkAlMap_TPL_dict[module].SetFillColor(1) 
+               self.TkAlMap_TPL_dict[module].SetLineColor(bad_col_idx) 
+               #self.TkAlMap_TPL_dict[module].SetLineStyle(2) => lines too small to see effect 
+               self.TkAlMap_TPL_dict[module].SetLineWidth(6)
+               self.TkAlMap_TPL_dict[module].Draw()
+        print('TkAlMap: indicated '+str(n_bad)+' bad modules')
 
 #### Draw functions
     def draw_text(self):
         print('TkAlMap: drawing text')
         self.canvas.cd()
         TL = ROOT.TLatex()
-        TL.SetTextSize(0.025)
+        TL.SetTextSize(0.025*self.text_factor)
         for key in self.TkAlMap_text_dict:
             TL.SetTextAlign(self.TkAlMap_text_dict[key]['alignment'])
             TL.DrawLatex(self.TkAlMap_text_dict[key]['x'], self.TkAlMap_text_dict[key]['y'], self.TkAlMap_text_dict[key]['text'])
-        self.draw_cms_prelim()
         self.draw_title()
+        self.draw_cms_prelim()
         self.canvas.Update()
 
     def draw_TPL(self):
@@ -672,6 +917,7 @@ class TkAlMap:
         self.canvas.cd()
         for module in self.TkAlMap_TPL_dict:
             self.TkAlMap_TPL_dict[module].Draw('f')
+            self.TkAlMap_TPL_dict[module].SetLineWidth(1) 
             self.TkAlMap_TPL_dict[module].Draw()
         self.canvas.Update()
 
@@ -686,6 +932,8 @@ class TkAlMap:
 
     def save(self, out_dir='.', extension='pdf'):
         name = '_'.join(['TkAlMap', self.tracker, self.var])
+        if self.sideway_title:
+            name += '_ST'
         if self.two_sigma_cap and not self.default_range:
             name += '_4sig'
         elif self.default_range:
@@ -700,19 +948,25 @@ class TkAlMap:
         self.setup_colors()
         self.set_colorbar_axis()
         if self.do_tanh: self.set_colorbar_colors()
+        self.draw_all_arrows()
         self.draw_TPL()
         self.draw_text()
         self.draw_color_bar()
+        if self.do_bad_mod: self.indicate_bad_modules()
 
 ### Test functions
-    def plot_variable_distribution(self, nbins=200, out_dir='.'):
+    def plot_variable_distribution(self, nbins=200, out_dir='.', show_10sigma=False):
         print('TkAlMap: drawing variable distribution')
         canv_name = 'histogram_canvas_'+self.tracker+'_'+self.var
         if self.two_sigma_cap: canv_name += '_cap'
         canvas = ROOT.TCanvas(canv_name, 'TkAlMap '+self.var+' histogram canvas', 800, 800)
  
-        h_min = min(min(self.val_list), self.mean_val - 2*self.std_val) - self.std_val
-        h_max = max(max(self.val_list), self.mean_val + 2*self.std_val) + self.std_val
+        if show_10sigma:
+            h_min = self.mean_val - 5*self.std_val
+            h_max = self.mean_val + 5*self.std_val
+        else:
+            h_min = min(min(self.val_list), self.mean_val - 2*self.std_val) - self.std_val
+            h_max = max(max(self.val_list), self.mean_val + 2*self.std_val) + self.std_val
         hist = ROOT.TH1F(self.var+'_hist', 'Variable distribution', nbins, h_min, h_max)
         for val in self.val_list:
             hist.Fill(val)
@@ -738,6 +992,28 @@ class TkAlMap:
         path = out_dir + '/' + name + '.png' 
         canvas.SaveAs(path)
 
+    def get_n_outliners(self, n=100, out_dir='.'):
+        print('TkAlMap: gathering first '+str(n)+' outliners')
+        mod_l = []
+        std_l = []
+        for module in self.mod_val_dict:
+            if module in self.TkAlMap_TPL_dict:
+                val = self.mod_val_dict[module]
+                n_std = abs((val - self.mean_val + 0.)/(self.std_val + 0.))
+                std_l.append(n_std)
+                mod_l.append(module)
+
+        std_l_s, mod_l_s = (list(t) for t in zip(*sorted(zip(std_l, mod_l))))
+        name = '_'.join(['Outliners', 'n'+str(n), self.var, self.tracker])
+        path = out_dir + '/' +name+ '.txt'
+        o_file = open(path, 'w')
+        o_file.write('#moduleID\t#stdDev\n')
+        idx = -1
+        while abs(idx)<=n and abs(idx)<=len(mod_l):
+            o_file.write(str(mod_l_s[idx])+'\t'+str(std_l_s[idx])+'\n')
+            idx -= 1
+        o_file.close()
+        print('TkAlMap: '+path+' created')
 
 ### Clean up
     def clean_up(self):
@@ -752,25 +1028,78 @@ class TkAlMap:
 
 
 if __name__ == '__main__':
-    #TkMap = TkAlMap('test', 'Here goes the title', 'run/tree.root', True, height=780, tracker='strips')
-    #TkMap = TkAlMap('test', 'Here goes the title', 'run/tree.root', True, height=780)
-    TkMap = TkAlMap('test', 'Here goes the title', 'run/tree.root', True, height=1400, GEO_file='TkAlMapDesign_phase0_cfg.py')
-    #TkMap = TkAlMap('test', 'Here goes the title', 'run/tree.root', True, height=780, GEO_file='TkAlMapDesign_phase0_cfg.py')
-    #TkMap = TkAlMap('test', 'Here goes the title', 'run/tree.root', True, height=780, GEO_file='TkAlMapDesign_phase0_cfg.py', tracker='pixel')
-    #TkMap = TkAlMap('test', 'Here goes the title', 'run/tree.root', True, height=780, GEO_file='TkAlMapDesign_phase1_cfg.py', tracker='pixel')
-    #TkMap = TkAlMap('test', 'Here goes the title', 'run/tree.root', True, height=780, GEO_file='TkAlMapDesign_phase0_cfg.py', tracker='strips')
-    #TkMap = TkAlMap('test', 'Here goes the title', 'run/tree.root', True, tracker='pixel')
-    #TkMap = TkAlMap('test', 'Here goes the title', 'run/tree.root', True)
 
-    var_list = ['dx', 'dy']
-    #var_list = ['dx']
-    for var in var_list:
-        TkMap_temp = copy.deepcopy(TkMap)
-        TkMap_temp.set_var(var)
-        #TkMap.load_var()
-        #TkMap.draw_text()
-        #TkMap.draw_TPL()
-        TkMap_temp.analyse()
-        TkMap_temp.save(extension='png')
-        TkMap_temp.save()
-    raw_input('exit')
+    def parser():
+        parser = argparse.ArgumentParser(description = "TkAlMap parser for custom use", formatter_class=argparse.RawTextHelpFormatter)
+        parser.add_argument("rootfile", metavar='rootfile', type=str, action="store", help="Input root file containing TTree \"alignTree\"")
+        parser.add_argument("variable", metavar='variable', type=str, action="store", help="name of variable to plot")
+        parser.add_argument("-o", "--out-dir", type=str, action = "store", default = '.', help ="Output directory whare plots will be stored")
+        parser.add_argument("-d", "--drange", action = "store_true", help ="Set default range (only for known variables)")
+        parser.add_argument("-s", "--s-cap", action = "store_true", help ="Cap values between 4 sigma around mean")
+        parser.add_argument("-p", "--palette", type=int, action = "store", default = 2, choices = [1, 2, 3], help ="Set color palette (1 rainbow, 2 diverging color B->R, 3 diverging color W->R)")
+        parser.add_argument("-t", "--tracker", action = "store", default = "full", choices = ["full", "pixel", "strips"], help ="Detector parts to show")
+        parser.add_argument("--phase", type=int, action = "store", default = 1, choices = [0, 1], help ="Set Phase (upgrade version) of detector to plot.")
+        parser.add_argument("--tanh", action = "store_true", help ="Rescale color range to tanh(val/2*sigma)")
+        parser.add_argument("--check-tk", action = "store_true", help ="Auto detect tracker phase (this will overwrite --phase option)")
+        parser.add_argument("--show-bad", action = "store_true", help ="Indicate bad modules with different edge color")
+        parser.add_argument("--skip-bad", action = "store_true", help ="Exclude bad module from beeing evaluated")
+        parser.add_argument("--bad-modules", type=str, action = "store", default = '', help ="Pass txt file with bad module ID's")
+        parser.add_argument("--var-dist", action = "store_true", help ="Plot variable distribution")
+        parser.add_argument("--outliners", action = "store_true", help ="Collect outliners")
+        parser.add_argument("--title", type=str, action = "store", default = None, help ="Title in plot")
+        parser.add_argument("--event-info", type=str, action = "store", default = None, help ="Event info in top right corner")
+        parser.add_argument("--units", type=str, action = "store", default = "cm", help ="Units to set on the color bar axis")
+        parser.add_argument("--max", type=str, action = "store", default = None, help ="Set max value to show")
+        parser.add_argument("--min", type=str, action = "store", default = None, help ="Set min value to show")
+        parser.add_argument("-b", "--batch", action = "store_true", help ="Set batch mode")
+        parser.add_argument("--no-preliminary", action = "store_false", help ="Remove Preliminary in top left corner")
+        parser.add_argument("--simulation"    , action = "store_true", help ="Set Simulation in top left corner if not Preliminary")
+        parser.add_argument("--sideway-title" , action = "store_true", help ="Put tile to the left side")
+    
+        return parser.parse_args()
+
+    args = parser()
+    ROOT.gROOT.SetBatch(args.batch);
+
+    #ROOT.gROOT.SetBatch(args.batch)
+    det_phase = 'TkAlMapDesign_phase1_cfg.py' 
+    if args.phase == 0: det_phase = 'TkAlMapDesign_phase0_cfg.py'
+    elif args.phase == 1: det_phase = 'TkAlMapDesign_phase1_cfg.py'
+
+    title = 'TkAlMap: '+args.variable
+    if not args.title is None: title = args.title
+
+    event_info = EVENT_INFO
+    if not args.event_info is None: event_info = args.event_info
+
+
+    TkMap = TkAlMap(
+        args.variable, 
+        title, 
+        args.rootfile,
+        event_info=event_info, 
+        use_default_range=args.drange, 
+        two_sigma_cap=args.s_cap, 
+        tracker=args.tracker, 
+        palette=args.palette, 
+        do_tanh=args.tanh, 
+        check_tracker=args.check_tk, 
+        GEO_file=det_phase, 
+        indicate_bad_modules=args.show_bad,
+        skip_bad_modules=args.skip_bad,
+        is_preliminary=args.no_preliminary,
+        is_simulation=args.simulation,
+        sideway_title=args.sideway_title
+        )
+
+    TkMap.set_var(args.variable, units=args.units) 
+    if not args.max is None and not args.min is None: TkMap.set_var(args.variable, units=args.units, var_range=[float(args.min), float(args.max)]) 
+    #def __init__(self, variable, title, root_file, use_default_range=False, two_sigma_cap=False, height=1400, GEO_file='TkAlMapDesign_phase1_cfg.py', tracker='full', palette=2, do_tanh=False, check_tracker=True):
+
+    if args.bad_modules != '': TkMap.load_bad_modules(args.bad_modules)
+
+    TkMap.analyse()
+    TkMap.save(out_dir=args.out_dir)
+    TkMap.save(out_dir=args.out_dir, extension='png')
+    if args.var_dist: TkMap.plot_variable_distribution(out_dir=args.out_dir)
+    if args.outliners: TkMap.get_n_outliners(out_dir=args.out_dir)

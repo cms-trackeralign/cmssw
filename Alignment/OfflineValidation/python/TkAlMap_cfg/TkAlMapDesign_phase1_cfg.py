@@ -1,3 +1,4 @@
+import copy
 
 M_X = 1.
 M_Y = 2.5
@@ -415,6 +416,176 @@ for z in ['-', '+']:
             'y': TkMap_GEO['strips']['TID'+z][disc]['y_off'] + STR_TID_D_W,
             'alignment': 13,
         }
+
+# Add arrows
+#FPIX
+x_arrow = {
+    'label': 'x',
+    'alignment': 33,
+    'x1': TkMap_GEO['pixel']['FPIX-']['-2']['x_off'] + (PIX_D_W + 0.)/2.,
+    'y1': TkMap_GEO['pixel']['FPIX-']['-2']['y_off'] + (PIX_D_W + 0.)/2. + M_T,
+    'x2': TkMap_GEO['pixel']['FPIX-']['-2']['x_off'] + (PIX_D_W + 0.)/2.,
+    'y2': TkMap_GEO['pixel']['FPIX-']['-2']['y_off'] + (PIX_D_W + 0.) + (M_Y/2.),
+    #'label_pos': [x_arrow['x2'] + M_X, x_arrow['y2']]
+}
+x_arrow['label_pos'] = [x_arrow['x2'] - M_X, x_arrow['y2']]
+y_arrow = {
+    'label': 'y',
+    'alignment': 13,
+    'x1': TkMap_GEO['pixel']['FPIX-']['-2']['x_off'] + (PIX_D_W + 0.)/2.,
+    'y1': TkMap_GEO['pixel']['FPIX-']['-2']['y_off'] + (PIX_D_W + 0.)/2. + M_T,
+    'x2': TkMap_GEO['pixel']['FPIX-']['-2']['x_off'] - (M_Y/2.),
+    'y2': TkMap_GEO['pixel']['FPIX-']['-2']['y_off'] + (PIX_D_W + 0.)/2. + M_T,
+    #'label_pos': [y_arrow['x2'], y_arrow['y2'] + M_X]
+}
+y_arrow['label_pos'] = [y_arrow['x2'], y_arrow['y2'] - M_X]
+TkMap_GEO['pixel']['FPIX-']['-2']['arrows'] = [x_arrow, y_arrow]
+
+#BPIX
+phi_arrow = {
+    'label': '#phi',
+    'alignment': 33,
+    'x1': TkMap_GEO['pixel']['BPIX']['L2']['x_off'] + PIX_L_W,
+    'y1': TkMap_GEO['pixel']['BPIX']['L2']['y_off'] - M_Y/8.,
+    'x2': TkMap_GEO['pixel']['BPIX']['L2']['x_off'] ,
+    'y2': TkMap_GEO['pixel']['BPIX']['L2']['y_off'] - M_Y/8.,
+    #'label_pos': [x_arrow['x2'] + M_X, x_arrow['y2']]
+}
+phi_arrow['label_pos'] = [phi_arrow['x1'] - M_X, phi_arrow['y2'] - M_X/2.]
+
+pi_mark = {}
+pi_mark['x1'] = phi_arrow['x2'] + (phi_arrow['x1'] - phi_arrow['x2'])/2.
+pi_mark['x2'] = pi_mark['x1']
+pi_mark['y1'] = phi_arrow['y1'] - M_Y/8.
+pi_mark['y2'] = phi_arrow['y1'] + M_Y/8.
+pi_mark['alignment'] = 23
+pi_mark['label'] = '#pi'
+pi_mark['label_pos'] = [pi_mark['x1'], phi_arrow['label_pos'][1]]
+
+ppiO2_mark = copy.deepcopy(pi_mark)
+ppiO2_mark['x1'] = phi_arrow['x2'] + 3*(phi_arrow['x1'] - phi_arrow['x2'])/4.
+ppiO2_mark['x2'] = ppiO2_mark['x1']
+#ppiO2_mark['label'] = '#frac{#pi}{2}'
+ppiO2_mark['label'] = '#pi/2'
+ppiO2_mark['label_pos'] = [ppiO2_mark['x1'], phi_arrow['label_pos'][1]]
+
+mpiO2_mark = copy.deepcopy(pi_mark)
+mpiO2_mark['x1'] = phi_arrow['x2'] + (phi_arrow['x1'] - phi_arrow['x2'])/4.
+mpiO2_mark['x2'] = mpiO2_mark['x1']
+#mpiO2_mark['label'] = '#frac{-#pi}{2}'
+mpiO2_mark['label'] = '-#pi/2'
+mpiO2_mark['label_pos'] = [mpiO2_mark['x1'], phi_arrow['label_pos'][1]]
+
+phi_arrow['marks'] = [pi_mark, ppiO2_mark, mpiO2_mark]
+
+
+z_arrow = {
+    'label': 'z',
+    'alignment': 33,
+    'x1': TkMap_GEO['pixel']['BPIX']['L3']['x_off'] - M_Y/4.,
+    'y1': TkMap_GEO['pixel']['BPIX']['L3']['y_off'] ,
+    'x2': TkMap_GEO['pixel']['BPIX']['L3']['x_off'] - M_Y/4.,
+    'y2': TkMap_GEO['pixel']['BPIX']['L3']['y_off'] + PIX_L_H,
+    #'y2': TkMap_GEO['pixel']['BPIX']['L1']['y_off'] + 2*PIX_L_H + M_Y,
+    #'label_pos': [y_arrow['x2'], y_arrow['y2'] + M_X]
+}
+z_arrow['label_pos'] = [z_arrow['x2'] - M_X/2., z_arrow['y2'] - M_X]
+
+z_mark = {}
+z_mark['y1'] = z_arrow['y1'] + (z_arrow['y2'] - z_arrow['y1'])/2.
+z_mark['y2'] = z_mark['y1']
+z_mark['x1'] = z_arrow['x1'] - M_X/4.
+z_mark['x2'] = z_arrow['x1'] + M_X/4.
+z_mark['alignment'] = 32
+z_mark['label'] = '0'
+z_mark['label_pos'] = [z_arrow['label_pos'][0], z_mark['y1']]
+z_arrow['marks'] = [z_mark]
+
+TkMap_GEO['pixel']['BPIX']['L2']['arrows'] = [phi_arrow, z_arrow]
+
+#TID
+x_arrow = {
+    'label': 'x',
+    'alignment': 33,
+    'x1': TkMap_GEO['strips']['TID-']['-2']['x_off'] + (STR_TID_D_W + 0.)/2.,
+    'y1': TkMap_GEO['strips']['TID-']['-2']['y_off'] + (STR_TID_D_W + 0.)/2.,
+    'x2': TkMap_GEO['strips']['TID-']['-2']['x_off'] + (STR_TID_D_W + 0.)/2.,
+    'y2': TkMap_GEO['strips']['TID-']['-2']['y_off'] + (STR_TID_D_W + 0.) + (M_Y/2.),
+    #'label_pos': [x_arrow['x2'] + M_X, x_arrow['y2']]
+}
+x_arrow['label_pos'] = [x_arrow['x2'] - M_X, x_arrow['y2']]
+y_arrow = {
+    'label': 'y',
+    'alignment': 13,
+    'x1': TkMap_GEO['strips']['TID-']['-2']['x_off'] + (STR_TID_D_W + 0.)/2.,
+    'y1': TkMap_GEO['strips']['TID-']['-2']['y_off'] + (STR_TID_D_W + 0.)/2.,
+    'x2': TkMap_GEO['strips']['TID-']['-2']['x_off'] - (M_Y/2.),
+    'y2': TkMap_GEO['strips']['TID-']['-2']['y_off'] + (STR_TID_D_W + 0.)/2.,
+    #'label_pos': [y_arrow['x2'], y_arrow['y2'] + M_X]
+}
+y_arrow['label_pos'] = [y_arrow['x2'], y_arrow['y2'] - M_X]
+TkMap_GEO['strips']['TID-']['-2']['arrows'] = [x_arrow, y_arrow]
+
+#TIB
+phi_arrow = {
+    'label': '#phi',
+    'alignment': 33,
+    'x1': TkMap_GEO['strips']['TIB']['L2']['x_off'] + STR_L_W,
+    'y1': TkMap_GEO['strips']['TIB']['L2']['y_off'] - M_Y/4.,
+    'x2': TkMap_GEO['strips']['TIB']['L2']['x_off'] ,
+    'y2': TkMap_GEO['strips']['TIB']['L2']['y_off'] - M_Y/4.,
+    #'label_pos': [x_arrow['x2'] + M_X, x_arrow['y2']]
+}
+phi_arrow['label_pos'] = [phi_arrow['x1'] - M_X, phi_arrow['y2'] - M_X/2.]
+
+pi_mark = {}
+pi_mark['x1'] = phi_arrow['x2'] + (phi_arrow['x1'] - phi_arrow['x2'])/2.
+pi_mark['x2'] = pi_mark['x1']
+pi_mark['y1'] = phi_arrow['y1'] - M_Y/8.
+pi_mark['y2'] = phi_arrow['y1'] + M_Y/8.
+pi_mark['alignment'] = 23
+pi_mark['label'] = '#pi'
+pi_mark['label_pos'] = [pi_mark['x1'], phi_arrow['label_pos'][1]]
+
+ppiO2_mark = copy.deepcopy(pi_mark)
+ppiO2_mark['x1'] = phi_arrow['x2'] + 3*(phi_arrow['x1'] - phi_arrow['x2'])/4.
+ppiO2_mark['x2'] = ppiO2_mark['x1']
+#ppiO2_mark['label'] = '#frac{#pi}{2}'
+ppiO2_mark['label'] = '#pi/2'
+ppiO2_mark['label_pos'] = [ppiO2_mark['x1'], phi_arrow['label_pos'][1]]
+
+mpiO2_mark = copy.deepcopy(pi_mark)
+mpiO2_mark['x1'] = phi_arrow['x2'] + (phi_arrow['x1'] - phi_arrow['x2'])/4.
+mpiO2_mark['x2'] = mpiO2_mark['x1']
+#mpiO2_mark['label'] = '#frac{-#pi}{2}'
+mpiO2_mark['label'] = '-#pi/2'
+mpiO2_mark['label_pos'] = [mpiO2_mark['x1'], phi_arrow['label_pos'][1]]
+
+phi_arrow['marks'] = [pi_mark, ppiO2_mark, mpiO2_mark]
+
+z_arrow = {
+    'label': 'z',
+    'alignment': 33,
+    'x1': TkMap_GEO['strips']['TIB']['L3']['x_off'] - M_Y/4.,
+    'y1': TkMap_GEO['strips']['TIB']['L3']['y_off'] ,
+    'x2': TkMap_GEO['strips']['TIB']['L3']['x_off'] - M_Y/4.,
+    'y2': TkMap_GEO['strips']['TIB']['L3']['y_off'] + STR_L_H,
+    #'y2': TkMap_GEO['strips']['TIB']['L1']['y_off'] + 2*STR_L_H + M_Y,
+    #'label_pos': [y_arrow['x2'], y_arrow['y2'] + M_X]
+}
+z_arrow['label_pos'] = [z_arrow['x2'] - M_X/2., z_arrow['y2'] - M_X]
+
+z_mark = {}
+z_mark['y1'] = z_arrow['y1'] + (z_arrow['y2'] - z_arrow['y1'])/2.
+z_mark['y2'] = z_mark['y1']
+z_mark['x1'] = z_arrow['x1'] - M_X/4.
+z_mark['x2'] = z_arrow['x1'] + M_X/4.
+z_mark['alignment'] = 32
+z_mark['label'] = '0'
+z_mark['label_pos'] = [z_arrow['label_pos'][0], z_mark['y1']]
+z_arrow['marks'] = [z_mark]
+
+TkMap_GEO['strips']['TIB']['L2']['arrows'] = [phi_arrow, z_arrow]
 
 def read_TPLfile(file_name):
     o_file = open(file_name, 'r')
