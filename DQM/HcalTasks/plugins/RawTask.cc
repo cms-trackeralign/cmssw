@@ -3,7 +3,8 @@
 using namespace hcaldqm;
 using namespace hcaldqm::constants;
 
-RawTask::RawTask(edm::ParameterSet const& ps) : DQTask(ps) {
+RawTask::RawTask(edm::ParameterSet const& ps)
+    : DQTask(ps), hcalDbServiceToken_(esConsumes<HcalDbService, HcalDbRecord, edm::Transition::BeginRun>()) {
   _tagFEDs = ps.getUntrackedParameter<edm::InputTag>("tagFEDs", edm::InputTag("rawDataCollector"));
   _tagReport = ps.getUntrackedParameter<edm::InputTag>("tagReport", edm::InputTag("hcalDigis"));
   _calibProcessing = ps.getUntrackedParameter<bool>("calibProcessing", false);
@@ -23,8 +24,7 @@ RawTask::RawTask(edm::ParameterSet const& ps) : DQTask(ps) {
   DQTask::bookHistograms(ib, r, es);
 
   //	GET WHAT YOU NEED
-  edm::ESHandle<HcalDbService> dbs;
-  es.get<HcalDbRecord>().get(dbs);
+  edm::ESHandle<HcalDbService> dbs = es.getHandle(hcalDbServiceToken_);
   _emap = dbs->getHcalMapping();
   std::vector<uint32_t> vVME;
   std::vector<uint32_t> vuTCA;
@@ -127,14 +127,14 @@ RawTask::RawTask(edm::ParameterSet const& ps) : DQTask(ps) {
     //	Bad Quality
     _cBadQuality_FEDVME.initialize(_name,
                                    "BadQuality",
-                                   hcaldqm::hashfunctions::fFED,
+                                   hcaldqm::hashfunctions::fCrate,
                                    new hcaldqm::quantity::ElectronicsQuantity(hcaldqm::quantity::fSpigot),
                                    new hcaldqm::quantity::ElectronicsQuantity(hcaldqm::quantity::fFiberVMEFiberCh),
                                    new hcaldqm::quantity::ValueQuantity(hcaldqm::quantity::fN),
                                    0);
     _cBadQuality_FEDuTCA.initialize(_name,
                                     "BadQuality",
-                                    hcaldqm::hashfunctions::fFED,
+                                    hcaldqm::hashfunctions::fCrate,
                                     new hcaldqm::quantity::ElectronicsQuantity(hcaldqm::quantity::fSlotuTCA),
                                     new hcaldqm::quantity::ElectronicsQuantity(hcaldqm::quantity::fFiberuTCAFiberCh),
                                     new hcaldqm::quantity::ValueQuantity(hcaldqm::quantity::fN),

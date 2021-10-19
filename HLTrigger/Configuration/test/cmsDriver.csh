@@ -221,7 +221,7 @@ foreach gtag ( MC DATA )
       set Era  = $EraRun3HI
       set Custom = " "
       set L1REPACK = L1REPACK:Full
-      set DIGI = DIGI:pdigi_hi
+      set DIGI = DIGI:pdigi_hi_nogen
     else if ( $table == PIon ) then
       set XL1T = $XL1TPI
       set XHLT = HLT:PIon
@@ -253,6 +253,10 @@ foreach gtag ( MC DATA )
       continue
     endif
 
+    ## Force CTPPSRun2Geometry if running on Run-2 data using Run3 modifier
+    if ( $gtag == DATA && ( $Era == $EraRun3HI || $Era == $EraRun3pp) ) then
+      set Custom = "HLTrigger/Configuration/CustomConfigs.CTPPSRun2Geometry"
+    endif
 
     if ( $gtag == DATA ) then
 
@@ -320,9 +324,11 @@ EOF
     else
       set STEPS = "RAW2DIGI,L1Reco,RECO,EI,PAT,DQM"
     endif
+    set CustomCommand = "--customise_commands=process.valCscStage2Digis.GEMPadDigiClusterProducer='';process.valCscStage2Digis.commonParam=dict(runME11ILT=False)"
+
     echo
     echo "Creating RECO+EI+PAT+DQM $name"
-    cmsDriver.py RelVal                 --step=$STEPS                                      --conditions=$RTAG --filein=file:RelVal_HLT_$name.root          --custom_conditions=$XL1T  --fileout=RelVal_RECO_$name.root         --number=$NN $DATAMC --no_exec --datatier 'RECO,MINIAOD,DQMIO'             --eventcontent=RECO,MINIAOD,DQM        --customise=HLTrigger/Configuration/CustomConfigs.Base    $Era --customise=$Custom  --scenario=$SCEN --python_filename=RelVal_RECO_$name.py          --processName=$RNAME
+    cmsDriver.py RelVal                 --step=$STEPS                                      --conditions=$RTAG --filein=file:RelVal_HLT_$name.root          --custom_conditions=$XL1T  --fileout=RelVal_RECO_$name.root         --number=$NN $DATAMC --no_exec --datatier 'RECO,MINIAOD,DQMIO'             --eventcontent=RECO,MINIAOD,DQM        --customise=HLTrigger/Configuration/CustomConfigs.Base    $Era --customise=$Custom  --scenario=$SCEN --python_filename=RelVal_RECO_$name.py          --processName=$RNAME   $CustomCommand
 
     else
 

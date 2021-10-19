@@ -3,7 +3,8 @@
 
 using namespace hcaldqm;
 using namespace hcaldqm::constants;
-PedestalTask::PedestalTask(edm::ParameterSet const& ps) : DQTask(ps) {
+PedestalTask::PedestalTask(edm::ParameterSet const& ps)
+    : DQTask(ps), hcalDbServiceToken_(esConsumes<HcalDbService, HcalDbRecord, edm::Transition::BeginRun>()) {
   //	tags
   _tagQIE11 = ps.getUntrackedParameter<edm::InputTag>("tagHE", edm::InputTag("hcalDigis"));
   _tagHO = ps.getUntrackedParameter<edm::InputTag>("tagHO", edm::InputTag("hcalDigis"));
@@ -35,8 +36,7 @@ PedestalTask::PedestalTask(edm::ParameterSet const& ps) : DQTask(ps) {
       return;
   DQTask::bookHistograms(ib, r, es);
 
-  edm::ESHandle<HcalDbService> dbs;
-  es.get<HcalDbRecord>().get(dbs);
+  edm::ESHandle<HcalDbService> dbs = es.getHandle(hcalDbServiceToken_);
   _emap = dbs->getHcalMapping();
   std::vector<uint32_t> vhashVME;
   std::vector<uint32_t> vhashuTCA;
@@ -884,8 +884,8 @@ PedestalTask::PedestalTask(edm::ParameterSet const& ps) : DQTask(ps) {
 
       //	@cDAQ
       if (hcaldqm::utilities::isFEDHBHE(eid) || hcaldqm::utilities::isFEDHO(eid) || hcaldqm::utilities::isFEDHF(eid)) {
-        double frmissing = double(_xNMsn1LS.get(eid)) / double(_xNChs.get(eid));
-        double frbadm = _xNBadMean1LS.get(eid) / _xNChs.get(eid);
+        double frmissing = (_xNChs.get(eid) == 0) ? 0 : double(_xNMsn1LS.get(eid)) / double(_xNChs.get(eid));
+        double frbadm = (_xNChs.get(eid) == 0) ? 0 : _xNBadMean1LS.get(eid) / _xNChs.get(eid);
         //double frbadr = _xNBadRMS1LS.get(eid)/_xNChs.get(eid);
 
         if (frmissing >= _thresh_missing_high)
