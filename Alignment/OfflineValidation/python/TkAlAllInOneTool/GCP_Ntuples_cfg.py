@@ -3,8 +3,6 @@ import FWCore.ParameterSet.Config as cms
 
 from FWCore.ParameterSet.VarParsing import VarParsing
 
-from Alignment.OfflineValidation.TkAlAllInOneTool.utils import _byteify
-
 import json
 import os
 
@@ -22,7 +20,7 @@ options.parseArguments()
 
 ##Read in AllInOne config in JSON format
 with open(options.config, "r") as configFile:
-    config = _byteify(json.load(configFile, object_hook=_byteify),ignore_dicts=True)
+    config = json.load(configFile)
 
 #Global tag
 process.load("Configuration.StandardSequences.FrontierConditions_GlobalTag_cff")

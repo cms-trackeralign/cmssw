@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 import sys
 argv = sys.argv
 sys.argv = argv[:1]
@@ -81,7 +81,6 @@ if __name__ == '__main__':
     
         elif args.config.split(".")[-1] == "yaml":
             config = yaml.load(configFile, Loader=yaml.Loader)
-    
         else:
             raise Exception("Unknown config extension '{}'. Please use json/yaml format!".format(args.config.split(".")[-1]))
 

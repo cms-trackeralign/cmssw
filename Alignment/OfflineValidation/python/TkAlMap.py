@@ -584,9 +584,11 @@ class TkAlMap:
     def load_geometry(self):
         source_path = os.getenv('CMSSW_BASE') + '/src/' 
         var = {}
-        execfile(source_path + self.cfg_path + self.GEO_file, var)
+        #execfile(source_path + self.cfg_path + self.GEO_file, var)
+        exec(open(source_path + self.cfg_path + self.GEO_file).read(), var)
 
         MapStructure = var['TkMap_GEO']
+        #MapStructure = TkMap_GEO
         
         all_modules = {}
         all_arrows = {}
