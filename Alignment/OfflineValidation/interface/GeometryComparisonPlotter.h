@@ -1,3 +1,6 @@
+#ifndef Alignment_OfflineValidation_GeometryComparisonPlotter_h
+#define Alignment_OfflineValidation_GeometryComparisonPlotter_h
+
 #include <TROOT.h>
 #include <iostream>
 #include <fstream>
@@ -22,6 +25,8 @@
 #include <TLatex.h>
 #include <TList.h>
 
+#include <boost/property_tree/ptree.hpp>
+namespace pt = boost::property_tree;
 
 class GeometryComparisonPlotter
 {
@@ -48,13 +53,14 @@ class GeometryComparisonPlotter
         _grid_x,
         _grid_y,
         _window_width,
-        _window_height;
+        _window_height,
+        _canvas_index; // to append to the name of the canvases in case of duplication
 
     // branches
-    map<TString, int> branch_i;
-    map<TString, float> branch_f,
+    std::map<TString, int> branch_i;
+    std::map<TString, float> branch_f,
                         _max, _min, _SF;
-    map<TString, TString> _units;
+    std::map<TString, TString> _units;
 
     // variables of external objects
     TFile * tree_file;
@@ -74,7 +80,6 @@ class GeometryComparisonPlotter
 
 public:
 
-    static int canvas_index; // to append to the name of the canvases in case of duplication
     static int canvas_profile_index; // to append to the name of the canvases in case of duplication
 
     // constructor and destructor
@@ -84,22 +89,22 @@ public:
                               TString referenceName="Ideal",
                               TString alignmentName="Alignment",
                               bool plotOnlyGlobal=false,
-                              bool makeProfilePlots=false);
+                              bool makeProfilePlots=false, 
+                              int canvas_idx=0);
     ~GeometryComparisonPlotter ();
 
     // main methods
-    void MakePlots (const vector<TString>,
-                    const vector<TString>,
-                    const vector<float>,
-                    const vector<float>
+    void MakePlots (const std::vector<TString>,
+                    const std::vector<TString>,
+                    pt::ptree CFG
                     );
                     
-    void MakeTables (const vector<TString>,
-                    const vector<TString>,
-                    const vector<float>,
-                    const vector<float>);
+    void MakeTables (const std::vector<TString>,
+                    const std::vector<TString>,
+                    pt::ptree CFG
+                    );
                  
-    void WriteTable (const vector<TString> x,
+    void WriteTable (const std::vector<TString> x,
 					unsigned int nLevelsTimesSlices,
 					float meanValue[10][24],
 					float RMS[10][24],					
@@ -135,3 +140,4 @@ public:
     void SetCanvasSize          (const int window_width  = DEFAULT_WINDOW_WIDTH,
                                  const int window_height = DEFAULT_WINDOW_HEIGHT);
 };
+#endif
