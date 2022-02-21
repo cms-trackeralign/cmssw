@@ -86,7 +86,7 @@ def DMR(config, validationDir):
                     ##Work directory for each IOV
                     workDir = "{}/DMR/{}/{}/{}".format(validationDir, dmrType, mergeName, IOV) #Different (DATA) single jobs must contain different set of IOVs
 
-                    ##Write job info
+                    ## Write job info
                     local = {}
 
                     job = {
