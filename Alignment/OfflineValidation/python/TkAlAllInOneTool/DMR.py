@@ -72,15 +72,10 @@ def DMR(config, validationDir):
                     "config": local, 
                 }
 
-                alignmentList = []
-                for singleName in config["validations"]["DMR"][dmrType][mergeName]["singles"]:
+                for alignment in config["alignments"]:
                     ##Deep copy necessary things from global config
-                    for alignment in config["validations"]["DMR"]["single"][singleName]["alignments"]:
-                        if alignment not in alignmentList:
-                            alignmentList.append(alignment)
-                for alignment in alignmentList:
                     local.setdefault("alignments", {})
-                    if alignment in config["alignments"]:
+                    if alignment in config["validations"]["DMR"]["single"][mergeName]["alignments"]:
                         local["alignments"][alignment] = copy.deepcopy(config["alignments"][alignment])
                 local["validation"] = copy.deepcopy(config["validations"]["DMR"][dmrType][mergeName])
                 local["validation"]["IOV"] = IOV
