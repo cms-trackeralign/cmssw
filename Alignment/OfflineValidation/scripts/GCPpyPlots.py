@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 import sys
 argv = sys.argv
 sys.argv = argv[:1]
@@ -65,7 +65,7 @@ def TkAlMap_plots(config):
         if plot_png: TkMap_pixel.save(out_dir=plot_dir, extension='png')
         TkMap_pixel.plot_variable_distribution(out_dir=plot_dir)
 
-        TkMap_strips.set_var(var)
+        TkMap_strips.set_var(var, var_range=var_range)
         TkMap_strips.analyse()
         TkMap_strips.save(out_dir=plot_dir)
         if plot_png: TkMap_strips.save(out_dir=plot_dir, extension='png')
@@ -81,7 +81,6 @@ if __name__ == '__main__':
     
         elif args.config.split(".")[-1] == "yaml":
             config = yaml.load(configFile, Loader=yaml.Loader)
-    
         else:
             raise Exception("Unknown config extension '{}'. Please use json/yaml format!".format(args.config.split(".")[-1]))
 

@@ -165,7 +165,7 @@ validations:
                         drawDxyErrorVsPt: true
                     drawHistograms:
                         drawDz: true
-                        drawDxy: true    
+                        drawDxy: true
 style:
     CMSlabel: Internal
     trends:
