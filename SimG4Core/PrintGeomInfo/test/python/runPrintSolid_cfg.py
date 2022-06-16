@@ -1,7 +1,7 @@
 import FWCore.ParameterSet.Config as cms
 
-from Configuration.Eras.Era_Run3_cff import Run3
-process = cms.Process('G4PrintGeometry',Run3)
+from Configuration.Eras.Era_Run3_DDD_cff import Run3_DDD
+process = cms.Process('G4PrintGeometry',Run3_DDD)
 process.load('Configuration.Geometry.GeometryExtended2021Reco_cff')
 
 #from Configuration.Eras.Era_Run3_dd4hep_cff import Run3_dd4hep
@@ -47,5 +47,6 @@ process.g4SimHits.UseMagneticField = False
 process.g4SimHits.Physics.type = 'SimG4Core/Physics/DummyPhysics'
 process.g4SimHits.Physics.DummyEMPhysics = True
 process.g4SimHits.Physics.DefaultCutValue = 10. 
+process.g4SimHits.LHCTransport = False
 
 process.p1 = cms.Path(process.generator*process.VtxSmeared*process.generatorSmeared*process.g4SimHits*process.printGeomSolids)

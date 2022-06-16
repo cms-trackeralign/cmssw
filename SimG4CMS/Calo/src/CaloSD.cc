@@ -8,7 +8,6 @@
 #include "SimG4Core/Notification/interface/TrackInformation.h"
 #include "SimG4Core/Notification/interface/G4TrackToParticleID.h"
 #include "SimG4Core/Notification/interface/SimTrackManager.h"
-#include "FWCore/Framework/interface/ESHandle.h"
 #include "FWCore/ParameterSet/interface/ParameterSet.h"
 #include "FWCore/Utilities/interface/Exception.h"
 
@@ -173,15 +172,19 @@ G4bool CaloSD::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
   doFineCaloThisStep_ = (doFineCalo_ && isItFineCalo(aStep->GetPreStepPoint()->GetTouchable()));
 
   // apply shower library or parameterisation
+  // independent on energy deposition at a step
   if (isParameterized) {
     if (getFromLibrary(aStep)) {
       // for parameterized showers the primary track should be killed
-      aStep->GetTrack()->SetTrackStatus(fStopAndKill);
-      auto tv = aStep->GetSecondary();
-      auto vol = aStep->GetPreStepPoint()->GetPhysicalVolume();
-      for (auto& tk : *tv) {
-        if (tk->GetVolume() == vol) {
-          tk->SetTrackStatus(fStopAndKill);
+      // secondary tracks should be killed if they are in the same volume
+      const_cast<G4Track*>(aStep->GetTrack())->SetTrackStatus(fStopAndKill);
+      if (0 < aStep->GetNumberOfSecondariesInCurrentStep()) {
+        auto tv = aStep->GetSecondaryInCurrentStep();
+        auto vol = aStep->GetPreStepPoint()->GetPhysicalVolume();
+        for (auto& tk : *tv) {
+          if (tk->GetVolume() == vol) {
+            const_cast<G4Track*>(tk)->SetTrackStatus(fStopAndKill);
+          }
         }
       }
       return true;
@@ -190,6 +193,11 @@ G4bool CaloSD::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
 
   // ignore steps without energy deposit
   edepositEM = edepositHAD = 0.f;
+  if (aStep->GetTotalEnergyDeposit() <= 0.0) {
+    return false;
+  }
+
+  // check unitID
   unsigned int unitID = setDetUnitId(aStep);
   auto const theTrack = aStep->GetTrack();
   uint16_t depth = getDepth(aStep);
@@ -199,7 +207,7 @@ G4bool CaloSD::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
   if (unitID > 0) {
     currentID.setID(unitID, time, primaryID, depth);
   } else {
-    if (aStep->GetTotalEnergyDeposit() > 0.0 && (!ignoreReject)) {
+    if (!ignoreReject) {
       const G4TouchableHistory* touch = static_cast<const G4TouchableHistory*>(theTrack->GetTouchable());
       edm::LogVerbatim("CaloSim") << "CaloSD::ProcessHits: unitID= " << unitID << " currUnit=   " << currentID.unitID()
                                   << " Detector: " << GetName() << " trackID= " << theTrack->GetTrackID() << " "
@@ -210,42 +218,39 @@ G4bool CaloSD::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
     }
     return false;
   }
-
-  if (aStep->GetTotalEnergyDeposit() == 0.0) {
+  double energy = getEnergyDeposit(aStep);
+  if (energy <= 0.0) {
     return false;
   }
 
-  double energy = getEnergyDeposit(aStep);
-  if (energy > 0.0) {
-    if (doFineCaloThisStep_) {
-      currentID.setID(unitID, time, findBoundaryCrossingParent(theTrack), depth);
-      currentID.markAsFinecaloTrackID();
-    }
-    if (G4TrackToParticleID::isGammaElectronPositron(theTrack)) {
-      edepositEM = energy;
-    } else {
-      edepositHAD = energy;
-    }
-#ifdef EDM_ML_DEBUG
-    G4TouchableHistory* touch = (G4TouchableHistory*)(theTrack->GetTouchable());
-    edm::LogVerbatim("CaloSim") << "CaloSD::" << GetName() << " PV:" << touch->GetVolume(0)->GetName()
-                                << " PVid=" << touch->GetReplicaNumber(0) << " MVid=" << touch->GetReplicaNumber(1)
-                                << " Unit:" << std::hex << unitID << std::dec << " Edep=" << edepositEM << " "
-                                << edepositHAD << " ID=" << theTrack->GetTrackID() << " pID=" << theTrack->GetParentID()
-                                << " E=" << theTrack->GetKineticEnergy() << " S=" << aStep->GetStepLength() << "\n "
-                                << theTrack->GetDefinition()->GetParticleName() << " primaryID= " << primaryID
-                                << " currentID= (" << currentID << ") previousID= (" << previousID << ")";
-#endif
-    if (!hitExists(aStep)) {
-      currentHit = createNewHit(aStep, aStep->GetTrack());
-    } else {
-#ifdef EDM_ML_DEBUG
-      edm::LogVerbatim("DoFineCalo") << "Not creating new hit, only updating " << shortreprID(currentHit);
-#endif
-    }
-    return true;
+  if (doFineCaloThisStep_) {
+    currentID.setID(unitID, time, findBoundaryCrossingParent(theTrack), depth);
+    currentID.markAsFinecaloTrackID();
   }
-  return false;
+
+  if (G4TrackToParticleID::isGammaElectronPositron(theTrack)) {
+    edepositEM = energy;
+  } else {
+    edepositHAD = energy;
+  }
+#ifdef EDM_ML_DEBUG
+  G4TouchableHistory* touch = (G4TouchableHistory*)(theTrack->GetTouchable());
+  edm::LogVerbatim("CaloSim") << "CaloSD::" << GetName() << " PV:" << touch->GetVolume(0)->GetName()
+                              << " PVid=" << touch->GetReplicaNumber(0) << " MVid=" << touch->GetReplicaNumber(1)
+                              << " Unit:" << std::hex << unitID << std::dec << " Edep=" << edepositEM << " "
+                              << edepositHAD << " ID=" << theTrack->GetTrackID() << " pID=" << theTrack->GetParentID()
+                              << " E=" << theTrack->GetKineticEnergy() << " S=" << aStep->GetStepLength() << "\n "
+                              << theTrack->GetDefinition()->GetParticleName() << " primaryID= " << primaryID
+                              << " currentID= (" << currentID << ") previousID= (" << previousID << ")";
+#endif
+  if (!hitExists(aStep)) {
+    currentHit = createNewHit(aStep, theTrack);
+  } else {
+#ifdef EDM_ML_DEBUG
+    edm::LogVerbatim("DoFineCalo") << "Not creating new hit, only updating " << shortreprID(currentHit);
+#endif
+  }
+  return true;
 }
 
 bool CaloSD::ProcessHits(G4GFlashSpot* aSpot, G4TouchableHistory*) {
@@ -267,6 +272,8 @@ bool CaloSD::ProcessHits(G4GFlashSpot* aSpot, G4TouchableHistory*) {
   fFakePreStepPoint->SetTouchableHandle(fTouchableHandle);
   fFakeStep.SetTotalEnergyDeposit(edep);
   edep = EnergyCorrected(fFakeStep, track);
+
+  // zero edep means hit outside the calorimeter
   if (edep <= 0.0) {
     return false;
   }
@@ -280,7 +287,8 @@ bool CaloSD::ProcessHits(G4GFlashSpot* aSpot, G4TouchableHistory*) {
   unsigned int unitID = setDetUnitId(&fFakeStep);
 
   if (unitID > 0) {
-    double time = 0;
+    // time of initial track
+    double time = track->GetGlobalTime() / nanosecond;
     int primaryID = getTrackID(track);
     uint16_t depth = getDepth(&fFakeStep);
     currentID.setID(unitID, time, primaryID, depth);

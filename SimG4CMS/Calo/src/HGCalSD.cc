@@ -1,4 +1,4 @@
-////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
 // File: HGCalSD.cc
 // Description: Sensitive Detector class for High Granularity Calorimeter
 ///////////////////////////////////////////////////////////////////////////////
@@ -135,15 +135,21 @@ uint32_t HGCalSD::setDetUnitId(const G4Step* aStep) {
   int iz(globalZ > 0 ? 1 : -1);
 
   int layer(0), module(-1), cell(-1);
-  if (geom_mode_ == HGCalGeometryMode::Hexagon8Module) {
+  if ((geom_mode_ == HGCalGeometryMode::Hexagon8Module) || (geom_mode_ == HGCalGeometryMode::Hexagon8Cassette)) {
     if (touch->GetHistoryDepth() > levelT2_) {
       layer = touch->GetReplicaNumber(4);
       module = touch->GetReplicaNumber(3);
       cell = touch->GetReplicaNumber(1);
     } else {
-      layer = touch->GetReplicaNumber(2);
-      module = touch->GetReplicaNumber(1);
+      layer = touch->GetReplicaNumber(3);
+      module = touch->GetReplicaNumber(2);
     }
+#ifdef EDM_ML_DEBUG
+    edm::LogVerbatim("HGCSim") << "DepthsTop: " << touch->GetHistoryDepth() << ":" << levelT1_ << ":" << levelT2_
+                               << " name " << touch->GetVolume(0)->GetName() << " layer:module:cell " << layer << ":"
+                               << module << ":" << cell;
+    printDetectorLevels(touch);
+#endif
   } else if ((touch->GetHistoryDepth() == levelT1_) || (touch->GetHistoryDepth() == levelT2_)) {
     layer = touch->GetReplicaNumber(0);
 #ifdef EDM_ML_DEBUG
@@ -233,7 +239,7 @@ uint32_t HGCalSD::setDetUnitId(int layer, int module, int cell, int iz, G4ThreeV
       ignoreRejection();
     }
   }
-  if ((geom_mode_ == HGCalGeometryMode::Hexagon8File) || (geom_mode_ == HGCalGeometryMode::Hexagon8Module) || (id == 0))
+  if (hgcons_->waferHexagon8File() || (id == 0))
     ignoreRejection();
   return id;
 }

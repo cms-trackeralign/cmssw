@@ -18,6 +18,7 @@ using namespace Pythia8;
 #include "GeneratorInterface/Pythia8Interface/interface/Py8InterfaceBase.h"
 
 #include "GeneratorInterface/Pythia8Interface/plugins/ReweightUserHooks.h"
+#include "GeneratorInterface/Pythia8Interface/interface/CustomHook.h"
 
 // PS matchning prototype
 //
@@ -146,6 +147,9 @@ private:
   //PT filter hook
   std::shared_ptr<PTFilterHook> fPTFilterHook;
 
+  //Generic customized hooks vector
+  std::shared_ptr<UserHooksVector> fCustomHooksVector;
+
   int EV1_nFinal;
   bool EV1_vetoOn;
   int EV1_maxVetoCount;
@@ -204,6 +208,9 @@ Pythia8Hadronizer::Pythia8Hadronizer(const edm::ParameterSet &params)
     throw edm::Exception(edm::errors::Configuration, "Pythia8Interface")
         << " UNKNOWN INITIAL STATE. \n The allowed initial states are: PP, PPbar, ElectronPositron \n";
   }
+
+  // avoid filling weights twice (from v8.30x)
+  toHepMC.set_store_weights(false);
 
   // Reweight user hook
   //
@@ -307,6 +314,17 @@ Pythia8Hadronizer::Pythia8Hadronizer(const edm::ParameterSet &params)
                                                    EV1_QEDvetoMode,
                                                    EV1_nFinalMode,
                                                    0));
+  }
+
+  if (params.exists("UserCustomization")) {
+    fCustomHooksVector = std::make_shared<UserHooksVector>();
+    const std::vector<edm::ParameterSet> userParams =
+        params.getParameter<std::vector<edm::ParameterSet>>("UserCustomization");
+    for (const auto &pluginParams : userParams) {
+      (fCustomHooksVector->hooks)
+          .push_back(
+              CustomHookFactory::get()->create(pluginParams.getParameter<std::string>("pluginName"), pluginParams));
+    }
   }
 
   if (params.exists("VinciaPlugin")) {
@@ -453,6 +471,13 @@ bool Pythia8Hadronizer::initializeForInternalPartons() {
     UserHooksSet = true;
   }
 
+  if (fCustomHooksVector.get()) {
+    edm::LogInfo("Pythia8Interface") << "Adding customized user hooks";
+    for (const auto &fUserHook : fCustomHooksVector->hooks) {
+      fMasterGen->addUserHooksPtr(fUserHook);
+    }
+  }
+
   edm::LogInfo("Pythia8Interface") << "Initializing MasterGen";
   status = fMasterGen->init();
 
@@ -508,6 +533,13 @@ bool Pythia8Hadronizer::initializeForExternalPartons() {
   if (fEmissionVetoHook1.get()) {
     edm::LogInfo("Pythia8Interface") << "Turning on Emission Veto Hook 1 from CMSSW Pythia8Interface";
     (fUserHooksVector->hooks).push_back(fEmissionVetoHook1);
+  }
+
+  if (fCustomHooksVector.get()) {
+    edm::LogInfo("Pythia8Interface") << "Adding customized user hook";
+    for (const auto &fUserHook : fCustomHooksVector->hooks) {
+      (fUserHooksVector->hooks).push_back(fUserHook);
+    }
   }
 
   if (fMasterGen->settings.mode("POWHEG:veto") > 0 || fMasterGen->settings.mode("POWHEG:MPIveto") > 0) {
@@ -712,6 +744,9 @@ bool Pythia8Hadronizer::generatePartonsAndHadronize() {
     return false;
   }
 
+  // 0th weight is not filled anymore since v8.30x, pushback manually
+  event()->weights().push_back(fMasterGen->info.weight());
+
   //add ckkw/umeps/unlops merging weight
   if (mergeweight != 1.) {
     event()->weights()[0] *= mergeweight;
@@ -821,10 +856,15 @@ bool Pythia8Hadronizer::hadronize() {
     evtgenDecays->decay();
 
   event() = std::make_unique<HepMC::GenEvent>();
+
   bool py8hepmc = toHepMC.fill_next_event(*(fMasterGen.get()), event().get());
+
   if (!py8hepmc) {
     return false;
   }
+
+  // 0th weight is not filled anymore since v8.30x, pushback manually
+  event()->weights().push_back(fMasterGen->info.weight());
 
   //add ckkw/umeps/unlops merging weight
   if (mergeweight != 1.) {

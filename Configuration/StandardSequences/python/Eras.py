@@ -21,6 +21,7 @@ class Eras (object):
                  'Run2_2016_trackingLowPU',
                  'Run2_2016_pA',
                  'Run2_2017',
+                 'Run2_2017_noMkFit',
                  'Run2_2017_FastSim', #new modifier for Phase1 FastSim, skips the muon GEM sequence
                  'Run2_2017_trackingRun2',
                  'Run2_2017_trackingLowPU',
@@ -31,10 +32,13 @@ class Eras (object):
                  'Run2_2018_pp_on_AA',
                  'Run2_2018_pp_on_AA_noHCALmitigation',
                  'Run2_2018_highBetaStar',
+                 'Run2_2018_noMkFit',
                  'Run3',
                  'Run3_noMkFit',
                  'Run3_pp_on_PbPb',
                  'Run3_dd4hep',
+                 'Run3_DDD',
+                 'Run3_FastSim',
                  'Phase2',
                  'Phase2C9',
                  'Phase2C10',
@@ -44,16 +48,12 @@ class Eras (object):
                  'Phase2C10_dd4hep',
                  'Phase2C11_dd4hep',
                  'Phase2C11I13',
-                 'Phase2C11T22',
-                 'Phase2C11T23',
                  'Phase2C12_dd4hep',
                  'Phase2C11M9',
                  'Phase2C11I13M9',
-                 'Phase2C11I13T22M9',
-                 'Phase2C11I13T23M9',
                  'Phase2C11I13T25M9',
                  'Phase2C11I13T26M9',
-                 'Phase2C11I13T27M9'
+                 'Phase2C17I13M9'
         ]
 
         internalUseMods = ['run2_common', 'run2_25ns_specific',

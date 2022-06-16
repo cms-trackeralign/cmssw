@@ -19,6 +19,7 @@
 //
 
 // system include files
+#include <array>
 #include <map>
 #include <string>
 #include <vector>
@@ -148,6 +149,8 @@ namespace edm {
       const EDConsumerBase* consumer() { return m_streamModules[0]; }
 
       const ProducerBase* producer() { return m_streamModules[0]; }
+
+      void deleteModulesEarly();
 
     private:
       void doPreallocate(PreallocationConfiguration const&);

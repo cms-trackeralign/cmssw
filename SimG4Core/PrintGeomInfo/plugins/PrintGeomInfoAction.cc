@@ -1,10 +1,8 @@
-#include "SimG4Core/Notification/interface/BeginOfJob.h"
 #include "SimG4Core/Notification/interface/BeginOfRun.h"
 #include "SimG4Core/Notification/interface/Observer.h"
 #include "SimG4Core/Watcher/interface/SimWatcher.h"
 
 #include "FWCore/Framework/interface/EventSetup.h"
-#include "FWCore/Framework/interface/ESTransientHandle.h"
 #include "FWCore/ParameterSet/interface/ParameterSet.h"
 #include "DataFormats/Math/interface/angle_units.h"
 #include "Geometry/Records/interface/IdealGeometryRecord.h"
@@ -44,15 +42,15 @@ using angle_units::operators::convertRadToDeg;
 
 typedef std::multimap<G4LogicalVolume *, G4VPhysicalVolume *, std::less<G4LogicalVolume *> > mmlvpv;
 
-class PrintGeomInfoAction : public SimWatcher,
-                            public Observer<const BeginOfJob *>,
-                            public Observer<const BeginOfRun *> {
+class PrintGeomInfoAction : public SimWatcher, public Observer<const BeginOfRun *> {
 public:
   PrintGeomInfoAction(edm::ParameterSet const &p);
-  ~PrintGeomInfoAction() override;
+  ~PrintGeomInfoAction() override = default;
+
+  void registerConsumes(edm::ConsumesCollector) override;
+  void beginRun(edm::EventSetup const &) override;
 
 private:
-  void update(const BeginOfJob *job) override;
   void update(const BeginOfRun *run) override;
   void dumpSummary(std::ostream &out = G4cout);
   void dumpG4LVList(std::ostream &out = G4cout);
@@ -74,10 +72,13 @@ private:
   G4LogicalVolume *getTopLV();
 
 private:
+  edm::ESGetToken<cms::DDCompactView, IdealGeometryRecord> dd4hepToken_;
+  edm::ESGetToken<DDCompactView, IdealGeometryRecord> dddToken_;
+
   bool dumpSummary_, dumpLVTree_, dumpLVList_, dumpMaterial_;
   bool dumpLV_, dumpSolid_, dumpAtts_, dumpPV_;
   bool dumpRotation_, dumpReplica_, dumpTouch_;
-  bool dumpSense_, dd4hep_;
+  bool dumpSense_, dumpParams_, dd4hep_;
   std::string name_;
   int nchar_;
   std::string fileMat_, fileSolid_, fileLV_, filePV_, fileTouch_;
@@ -100,7 +101,8 @@ PrintGeomInfoAction::PrintGeomInfoAction(const edm::ParameterSet &p) {
   dumpReplica_ = p.getUntrackedParameter<bool>("DumpReplica", false);
   dumpTouch_ = p.getUntrackedParameter<bool>("DumpTouch", false);
   dumpSense_ = p.getUntrackedParameter<bool>("DumpSense", false);
-  dd4hep_ = p.getUntrackedParameter<bool>("DD4Hep", false);
+  dumpParams_ = p.getUntrackedParameter<bool>("DumpParams", false);
+  dd4hep_ = p.getUntrackedParameter<bool>("DD4hep", false);
   name_ = p.getUntrackedParameter<std::string>("Name", "*");
   nchar_ = name_.find('*');
   name_.assign(name_, 0, nchar_);
@@ -128,13 +130,20 @@ PrintGeomInfoAction::PrintGeomInfoAction(const edm::ParameterSet &p) {
   G4cout << G4endl;
 }
 
-PrintGeomInfoAction::~PrintGeomInfoAction() {}
+void PrintGeomInfoAction::registerConsumes(edm::ConsumesCollector cc) {
+  if (dd4hep_) {
+    dd4hepToken_ = cc.esConsumes<cms::DDCompactView, IdealGeometryRecord, edm::Transition::BeginRun>();
+    G4cout << "PrintGeomInfoAction::Initialize ESGetToken for cms::DDCompactView" << G4endl;
+  } else {
+    dddToken_ = cc.esConsumes<DDCompactView, IdealGeometryRecord, edm::Transition::BeginRun>();
+    G4cout << "PrintGeomInfoAction::Initialize ESGetToken for DDCompactView" << G4endl;
+  }
+}
 
-void PrintGeomInfoAction::update(const BeginOfJob *job) {
+void PrintGeomInfoAction::beginRun(edm::EventSetup const &es) {
   if (dumpSense_) {
     if (dd4hep_) {
-      edm::ESTransientHandle<cms::DDCompactView> pDD;
-      (*job)()->get<IdealGeometryRecord>().get(pDD);
+      const cms::DDCompactView *pDD = &es.getData(dd4hepToken_);
 
       G4cout << "PrintGeomInfoAction::Get Printout of Sensitive Volumes "
              << "for " << names_.size() << " Readout Units" << G4endl;
@@ -155,13 +164,24 @@ void PrintGeomInfoAction::update(const BeginOfJob *job) {
           G4cout << leafDepth << spaces << "### VOLUME = " << lvname << " Copy No";
           for (unsigned int k = 0; k < leafDepth; ++k)
             G4cout << " " << copy[k];
-          G4cout << " Centre at " << tran << " (r = " << tran.Rho() << ", phi = " << convertRadToDeg(tran.phi()) << ")"
-                 << G4endl;
+          if (dumpParams_) {
+            G4cout << " parameters";
+            for (double val : fv.parameters()) {
+              if (std::abs(val) < 1.0) {
+                G4cout << std::setprecision(5);
+              } else
+                G4cout << std::setprecision(6);
+              G4cout << " " << val;
+            }
+            G4cout << G4endl;
+          } else {
+            G4cout << " Centre at " << tran << " (r = " << tran.Rho() << ", phi = " << convertRadToDeg(tran.phi())
+                   << ")" << G4endl;
+          }
         }
       }
     } else {
-      edm::ESTransientHandle<DDCompactView> pDD;
-      (*job)()->get<IdealGeometryRecord>().get(pDD);
+      const DDCompactView *pDD = &es.getData(dddToken_);
 
       G4cout << "PrintGeomInfoAction::Get Printout of Sensitive Volumes "
              << "for " << names_.size() << " Readout Units" << G4endl;
@@ -196,6 +216,7 @@ void PrintGeomInfoAction::update(const BeginOfJob *job) {
 }
 
 void PrintGeomInfoAction::update(const BeginOfRun *run) {
+  //Now take action
   theTopPV_ = getTopPV();
 
   if (dumpSummary_)

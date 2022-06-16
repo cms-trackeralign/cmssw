@@ -95,6 +95,7 @@
 #include <vector>
 #include <sstream>
 #include <atomic>
+#include <unordered_set>
 
 namespace edm {
 
@@ -175,7 +176,6 @@ namespace edm {
                    ExceptionToActionTable const& actions,
                    std::shared_ptr<ActivityRegistry> areg,
                    std::shared_ptr<ProcessConfiguration> processConfiguration,
-                   bool allowEarlyDelete,
                    StreamID streamID,
                    ProcessContext const* processContext);
 
@@ -233,14 +233,6 @@ namespace edm {
     /// (N.B. totalEventsFailed() + totalEventsPassed() == totalEvents()
     int totalEventsFailed() const { return totalEvents() - totalEventsPassed(); }
 
-    /// Turn end_paths "off" if "active" is false;
-    /// turn end_paths "on" if "active" is true.
-    void enableEndPaths(bool active);
-
-    /// Return true if end_paths are active, and false if they are
-    /// inactive.
-    bool endPathsEnabled() const;
-
     /// Return the trigger report information on paths,
     /// modules-in-path, modules-in-endpath, and modules.
     void getTriggerReport(TriggerReport& rep) const;
@@ -253,6 +245,10 @@ namespace edm {
 
     /// Delete the module with label iLabel
     void deleteModule(std::string const& iLabel);
+
+    void initializeEarlyDelete(ModuleRegistry& modReg,
+                               std::vector<std::string> const& branchesToDeleteEarly,
+                               edm::ProductRegistry const& preg);
 
     /// returns the collection of pointers to workers
     AllWorkers const& allWorkers() const { return workerManager_.allWorkers(); }
@@ -293,6 +289,21 @@ namespace edm {
 
     void reportSkipped(EventPrincipal const& ep) const;
 
+    struct AliasInfo {
+      std::string friendlyClassName;
+      std::string instanceLabel;
+      std::string originalInstanceLabel;
+      std::string originalModuleLabel;
+    };
+    std::vector<Worker*> tryToPlaceConditionalModules(
+        Worker*,
+        std::unordered_set<std::string>& conditionalModules,
+        std::multimap<std::string, edm::BranchDescription const*> const& conditionalModuleBranches,
+        std::multimap<std::string, AliasInfo> const& aliasMap,
+        ParameterSet& proc_pset,
+        ProductRegistry& preg,
+        PreallocationConfiguration const* prealloc,
+        std::shared_ptr<ProcessConfiguration const> processConfiguration);
     void fillWorkers(ParameterSet& proc_pset,
                      ProductRegistry& preg,
                      PreallocationConfiguration const* prealloc,
@@ -320,10 +331,6 @@ namespace edm {
     void addToAllWorkers(Worker* w);
 
     void resetEarlyDelete();
-    void initializeEarlyDelete(ModuleRegistry& modReg,
-                               edm::ParameterSet const& opts,
-                               edm::ProductRegistry const& preg,
-                               bool allowEarlyDelete);
 
     TrigResConstPtr results() const { return get_underlying_safe(results_); }
     TrigResPtr& results() { return get_underlying_safe(results_); }
@@ -368,7 +375,6 @@ namespace edm {
 
     StreamID streamID_;
     StreamContext streamContext_;
-    volatile bool endpathsAreActive_;
     std::atomic<bool> skippingEvent_;
   };
 
@@ -455,7 +461,7 @@ namespace edm {
         task->execute();
       });
     } else {
-      tbb::task_arena arena{tbb::task_arena::attach()};
+      oneapi::tbb::task_arena arena{oneapi::tbb::task_arena::attach()};
       arena.enqueue([task]() {
         TaskSentry s{task};
         task->execute();

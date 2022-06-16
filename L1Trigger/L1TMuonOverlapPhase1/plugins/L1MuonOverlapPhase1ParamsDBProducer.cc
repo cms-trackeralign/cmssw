@@ -1,4 +1,4 @@
-#include "L1Trigger/L1TMuonOverlapPhase1/plugins/L1MuonOverlapPhase1ParamsDBProducer.h"
+#include "L1MuonOverlapPhase1ParamsDBProducer.h"
 
 #include "CondCore/DBOutputService/interface/PoolDBOutputService.h"
 #include "CondFormats/L1TObjects/interface/L1TMuonOverlapParams.h"
@@ -30,7 +30,7 @@ void L1MuonOverlapPhase1ParamsDBProducer::analyze(const edm::Event& ev, const ed
   std::string recordName = "L1TMuonOverlapParamsRcd";
   edm::Service<cond::service::PoolDBOutputService> poolDbService;
   if (poolDbService.isAvailable()) {
-    poolDbService->writeOne(omtfParams.get(), poolDbService->currentTime(), recordName);
+    poolDbService->writeOneIOV(*omtfParams, poolDbService->currentTime(), recordName);
   }
   edm::LogVerbatim("L1MuonOverlapParamsDBProducer") << " analyze() line " << __LINE__ << std::endl;
 }

@@ -9,9 +9,9 @@
 
 #include "MagneticField/Engine/interface/MagneticField.h"
 #include "MagneticField/Records/interface/IdealMagneticFieldRecord.h"
+#include "SimG4Core/Notification/interface/G4SimEvent.h"
 
 #include <memory>
-#include <tbb/concurrent_vector.h>
 #include <unordered_map>
 #include <string>
 
@@ -27,9 +27,9 @@ class Generator;
 class RunManagerMT;
 
 class G4Event;
-class G4SimEvent;
 class G4Run;
 class SimTrackManager;
+class CustomUIsession;
 
 class RunAction;
 class EventAction;
@@ -53,14 +53,12 @@ public:
   void beginRun(const edm::EventSetup&);
   void endRun();
 
-  std::unique_ptr<G4SimEvent> produce(const edm::Event& inpevt,
-                                      const edm::EventSetup& es,
-                                      RunManagerMT& runManagerMaster);
+  G4SimEvent* produce(const edm::Event& inpevt, const edm::EventSetup& es, RunManagerMT& runManagerMaster);
 
   void abortEvent();
   void abortRun(bool softAbort = false);
 
-  inline G4SimEvent* simEvent() { return m_simEvent; }
+  inline G4SimEvent* simEvent() { return &m_simEvent; }
 
   void Connect(RunAction*);
   void Connect(EventAction*);
@@ -77,7 +75,6 @@ public:
 private:
   void initializeTLS();
   void initializeUserActions();
-
   void initializeRun();
   void terminateRun();
 
@@ -86,21 +83,22 @@ private:
 
   void DumpMagneticField(const G4Field*, const std::string&) const;
 
-  void resetTLS();
-  int getThreadIndex() const { return m_thread_index; }
+  inline int getThreadIndex() const { return m_thread_index; }
 
   Generator m_generator;
   edm::EDGetTokenT<edm::HepMCProduct> m_InToken;
   edm::EDGetTokenT<edm::HepMCProduct> m_LHCToken;
   edm::EDGetTokenT<edm::LHCTransportLinkContainer> m_theLHCTlinkToken;
   edm::ESGetToken<MagneticField, IdealMagneticFieldRecord> m_MagField;
-  const MagneticField* m_pMagField = nullptr;
+  const MagneticField* m_pMagField{nullptr};
 
-  bool m_nonBeam;
-  bool m_pUseMagneticField;
-  bool m_hasWatchers;
-  bool m_LHCTransport;
-  int m_EvtMgrVerbosity;
+  bool m_nonBeam{false};
+  bool m_pUseMagneticField{true};
+  bool m_hasWatchers{false};
+  bool m_LHCTransport{false};
+  bool m_dumpMF{false};
+
+  const int m_thread_index{-1};
 
   edm::ParameterSet m_pField;
   edm::ParameterSet m_pRunAction;
@@ -113,13 +111,11 @@ private:
 
   struct TLSData;
   TLSData* m_tls{nullptr};
-  bool dumpMF{false};
 
-  G4SimEvent* m_simEvent;
+  CustomUIsession* m_UIsession{nullptr};
+  G4SimEvent m_simEvent;
   std::unique_ptr<CMSSteppingVerbose> m_sVerbose;
   std::unordered_map<std::string, std::unique_ptr<SensitiveDetectorMakerBase>> m_sdMakers;
-
-  const int m_thread_index{-1};
 };
 
 #endif

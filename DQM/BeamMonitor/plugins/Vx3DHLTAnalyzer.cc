@@ -9,7 +9,6 @@
 
 #include "DQM/BeamMonitor/plugins/Vx3DHLTAnalyzer.h"
 
-#include "FWCore/ServiceRegistry/interface/Service.h"
 #include "FWCore/Utilities/interface/isFinite.h"
 #include "FWCore/Framework/interface/LuminosityBlock.h"
 
@@ -1239,7 +1238,8 @@ void Vx3DHLTAnalyzer::dqmEndLuminosityBlock(const LuminosityBlock& lumiBlock, co
       }
     }
     myGaussFit->SetRange(minXfit - (maxXfit - minXfit) / 2., maxXfit + (maxXfit - minXfit) / 2.);
-    Vx_X_Fit->getTH1()->Fit(myGaussFit, "QRL");
+    if (Vx_X_Fit->getTH1()->GetEntries() > 0)
+      Vx_X_Fit->getTH1()->Fit(myGaussFit, "QRL");
 
     myGaussFit->SetParameter(0, Vx_Y_Fit->getTH1()->GetMaximum());
     myGaussFit->SetParameter(1, Vx_Y_Fit->getTH1()->GetMean());
@@ -1259,7 +1259,8 @@ void Vx3DHLTAnalyzer::dqmEndLuminosityBlock(const LuminosityBlock& lumiBlock, co
       }
     }
     myGaussFit->SetRange(minXfit - (maxXfit - minXfit) / 2., maxXfit + (maxXfit - minXfit) / 2.);
-    Vx_Y_Fit->getTH1()->Fit(myGaussFit, "QRL");
+    if (Vx_Y_Fit->getTH1()->GetEntries() > 0)
+      Vx_Y_Fit->getTH1()->Fit(myGaussFit, "QRL");
 
     myGaussFit->SetParameter(0, Vx_Z_Fit->getTH1()->GetMaximum());
     myGaussFit->SetParameter(1, Vx_Z_Fit->getTH1()->GetMean());
@@ -1279,7 +1280,8 @@ void Vx3DHLTAnalyzer::dqmEndLuminosityBlock(const LuminosityBlock& lumiBlock, co
       }
     }
     myGaussFit->SetRange(minXfit - (maxXfit - minXfit) / 2., maxXfit + (maxXfit - minXfit) / 2.);
-    Vx_Z_Fit->getTH1()->Fit(myGaussFit, "QRL");
+    if (Vx_Z_Fit->getTH1()->GetEntries() > 0)
+      Vx_Z_Fit->getTH1()->Fit(myGaussFit, "QRL");
 
     delete myGaussFit;
   } else if ((nLumiFit != 0) && (lumiCounter % nLumiFit != 0) && (beginTimeOfFit != 0) && (runNumber != 0)) {

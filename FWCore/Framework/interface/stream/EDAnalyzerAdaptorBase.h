@@ -19,6 +19,7 @@
 //
 
 // system include files
+#include <array>
 #include <map>
 #include <string>
 #include <vector>
@@ -125,6 +126,8 @@ namespace edm {
       void convertCurrentProcessAlias(std::string const& processName);
 
       std::vector<ConsumesInfo> consumesInfo() const;
+
+      void deleteModulesEarly();
 
     private:
       bool doEvent(EventTransitionInfo const&, ActivityRegistry*, ModuleCallingContext const*);

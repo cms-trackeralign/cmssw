@@ -162,7 +162,7 @@ namespace edm {
     return fb;
   }
 
-  void PoolSource::closeFile_() { primaryFileSequence_->closeFile_(); }
+  void PoolSource::closeFile_() { primaryFileSequence_->closeFile(); }
 
   std::shared_ptr<RunAuxiliary> PoolSource::readRunAuxiliary_() { return primaryFileSequence_->readRunAuxiliary_(); }
 
@@ -181,8 +181,8 @@ namespace edm {
   }
 
   void PoolSource::readRun_(RunPrincipal& runPrincipal) {
-    primaryFileSequence_->readRun_(runPrincipal);
-    if (secondaryFileSequence_ && !branchIDsToReplace_[InRun].empty()) {
+    bool shouldWeProcessRun = primaryFileSequence_->readRun_(runPrincipal);
+    if (secondaryFileSequence_ && shouldWeProcessRun && !branchIDsToReplace_[InRun].empty()) {
       bool found = secondaryFileSequence_->skipToItem(runPrincipal.run(), 0U, 0U);
       if (found) {
         std::shared_ptr<RunAuxiliary> secondaryAuxiliary = secondaryFileSequence_->readRunAuxiliary_();
@@ -203,8 +203,8 @@ namespace edm {
   }
 
   void PoolSource::readLuminosityBlock_(LuminosityBlockPrincipal& lumiPrincipal) {
-    primaryFileSequence_->readLuminosityBlock_(lumiPrincipal);
-    if (secondaryFileSequence_ && !branchIDsToReplace_[InLumi].empty()) {
+    bool shouldWeProcessLumi = primaryFileSequence_->readLuminosityBlock_(lumiPrincipal);
+    if (secondaryFileSequence_ && shouldWeProcessLumi && !branchIDsToReplace_[InLumi].empty()) {
       bool found = secondaryFileSequence_->skipToItem(lumiPrincipal.run(), lumiPrincipal.luminosityBlock(), 0U);
       if (found) {
         std::shared_ptr<LuminosityBlockAuxiliary> secondaryAuxiliary =

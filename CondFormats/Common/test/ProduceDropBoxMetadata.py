@@ -5,6 +5,7 @@ import FWCore.ParameterSet.Config as cms
 process = cms.Process("myprocess")
 
 process.load("CondCore.CondDB.CondDB_cfi")
+process.load("FWCore.MessageService.MessageLogger_cfi")
 
 process.CondDB.connect = 'sqlite_file:DropBoxMetadata.db' 
 
@@ -20,7 +21,7 @@ import json
 
 def encodeJsonInString(filename):
     """This function open the json file and encodes it in a string replacing probelamtic characters"""
-    thefile = open(filename)
+    thefile = open("../data/"+filename)
     thejson = json.load(thefile)
     thefile.close()
     return json.JSONEncoder().encode(thejson).replace('"',"&quot;")
@@ -44,6 +45,10 @@ BeamSpotObjectsRcdHPByRun_prep_str = encodeJsonInString("BeamSpotObjectsRcdHPbyR
 #SiStripBadStripRcd
 SiStripBadStripRcd_prod_str = encodeJsonInString("SiStripBadStripRcd_prod.json")
 SiStripBadStripRcd_prep_str = encodeJsonInString("SiStripBadStripRcd_prep.json")
+
+#SiStripBadStripRcd from Hit Efficiency
+SiStripBadStripRcdHitEff_prod_str = encodeJsonInString("SiStripBadStripFromHitEffRcd_prod.json")
+SiStripBadStripRcdHitEff_prep_str = encodeJsonInString("SiStripBadStripFromHitEffRcd_prep.json")
 
 #SiStripApvGainRcd
 SiStripApvGainRcd_prod_str = encodeJsonInString("SiStripApvGainRcd_prod.json")
@@ -98,7 +103,8 @@ process.mywriter = cms.EDAnalyzer("ProduceDropBoxMetadata",
                                   # set to True if you want to write out a sqlite.db translating the json's into a payload
                                   write = cms.untracked.bool(True),
 
-                                  # toWrite holds a list of Pset's, one for each workflow you want to produce DropBoxMetadata for; you need to have 2 .json files for each PSet
+                                  # toWrite holds a list of Pset's, one for each workflow you want to produce DropBoxMetadata for;
+                                  # you need to have 2 .json files for each PSet
                                   toWrite = cms.VPSet(cms.PSet(record              = cms.untracked.string("BeamSpotObjectsRcdByRun"), 
                                                                Source              = cms.untracked.string("AlcaHarvesting"),
                                                                FileClass           = cms.untracked.string("ALCA"),
@@ -128,6 +134,12 @@ process.mywriter = cms.EDAnalyzer("ProduceDropBoxMetadata",
                                                                FileClass           = cms.untracked.string("ALCA"),
                                                                prodMetaData        = cms.untracked.string(SiStripBadStripRcd_prod_str),
                                                                prepMetaData        = cms.untracked.string(SiStripBadStripRcd_prep_str),
+                                                               ),
+                                                      cms.PSet(record              = cms.untracked.string('SiStripBadStripFromHitEffRcd'),
+                                                               Source              = cms.untracked.string("AlcaHarvesting"),
+                                                               FileClass           = cms.untracked.string("ALCA"),
+                                                               prodMetaData        = cms.untracked.string(SiStripBadStripRcdHitEff_prod_str),
+                                                               prepMetaData        = cms.untracked.string(SiStripBadStripRcdHitEff_prep_str),
                                                                ),
                                                       cms.PSet(record              = cms.untracked.string('SiStripApvGainRcd'),
                                                                Source              = cms.untracked.string("AlcaHarvesting"),
@@ -217,9 +229,7 @@ process.mywriter = cms.EDAnalyzer("ProduceDropBoxMetadata",
                                   # this boolean will read the content of whichever payload is available and print its content to stoutput
                                   # set this to false if you write out a sqlite.db translating the json's into a payload
                                   read = cms.untracked.bool(False),
-
-                                  # toRead lists of record names to be sought inside the DropBoxMetadataRcd payload avaialble to the ProduceDropBoxMetadata; for instance, if write is True, you're reading back the metadata you've just entered in the payload from the .json files
-                                  toRead = cms.untracked.vstring('BeamSpotObjectsRcdByRun','BeamSpotObjectsRcdByLumi','BeamSpotObjectsRcdHPByLumi','BeamSpotObjectsRcdHPByRun','SiStripBadStripRcd','SiStripApvGainRcd','TrackerAlignmentRcd','SiStripApvGainRcdAfterAbortGap','SiStripApvGainRcdAAG','EcalPedestalsRcd',"LumiCorrectionsRcd","SiPixelQualityFromDbRcd_prompt","SiPixelQualityFromDbRcd_stuckTBM","SiPixelQualityFromDbRcd_other","SiPixelLorentzAngleRcd","CTPPSRPAlignmentCorrectionsDataRcd","PPSTimingCalibrationRcd","PPSTimingCalibrationRcd_Sampic") # same strings as fType
+                                  toRead = cms.untracked.vstring() 
                                   )
 
 process.p = cms.Path(process.mywriter)
@@ -242,15 +252,4 @@ if process.mywriter.write:
                                               )
     
 process.load('Configuration.StandardSequences.FrontierConditions_GlobalTag_cff')
-process.GlobalTag.globaltag = '121X_dataRun3_Express_Queue'
-
-# Set to True if you want to read a DropBoxMetadata payload from a local sqlite
-# specify the name of the sqlitefile.db and the tag name; the payload loaded will be for run 300000
-readsqlite = False
-if readsqlite:
-    process.GlobalTag.toGet = cms.VPSet(
-        cms.PSet(record = cms.string("DropBoxMetadataRcd"),
-                 tag = cms.string("DropBoxMetadata"),
-                 connect = cms.string("sqlite_file:DropBoxMetadata_addHPbyRun.db")
-                )
-        )
+process.GlobalTag.globaltag = '124X_dataRun3_Express_Queue'

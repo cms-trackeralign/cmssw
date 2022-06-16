@@ -6,6 +6,9 @@ from Configuration.Eras.Modifier_fastSim_cff import fastSim
 from Configuration.ProcessModifiers.trackdnn_cff import trackdnn
 from RecoTracker.IterativeTracking.dnnQualityCuts import qualityCutDictionary
 
+# for no-loopers
+from Configuration.ProcessModifiers.trackingNoLoopers_cff import trackingNoLoopers
+
 #######################################################################
 # Very large impact parameter tracking using TOB + TEC ring 5 seeding #
 #######################################################################
@@ -239,18 +242,19 @@ trackingLowPU.toModify(tobTecStepChi2Est,
 # TRACK BUILDING
 import RecoTracker.CkfPattern.GroupedCkfTrajectoryBuilder_cfi
 tobTecStepTrajectoryBuilder = RecoTracker.CkfPattern.GroupedCkfTrajectoryBuilder_cfi.GroupedCkfTrajectoryBuilder.clone(
-    MeasurementTrackerName = '',
-    trajectoryFilter       = cms.PSet(refToPSet_ = cms.string('tobTecStepTrajectoryFilter')),
-    inOutTrajectoryFilter  = cms.PSet(refToPSet_ = cms.string('tobTecStepInOutTrajectoryFilter')),
+    trajectoryFilter       = dict(refToPSet_ = 'tobTecStepTrajectoryFilter'),
+    inOutTrajectoryFilter  = dict(refToPSet_ = 'tobTecStepInOutTrajectoryFilter'),
     useSameTrajFilter      = False,
     minNrOfHitsForRebuild  = 4,
     alwaysUseInvalidHits   = False,
     maxCand                = 2,
     estimator              = 'tobTecStepChi2Est',
-    #startSeedHitsInRebuild = True
-    maxDPhiForLooperReconstruction = cms.double(2.0),
-    maxPtForLooperReconstruction   = cms.double(0.7)
+    #startSeedHitsInRebuild = True,
+    maxDPhiForLooperReconstruction = 2.0,
+    maxPtForLooperReconstruction   = 0.7,
 )
+trackingNoLoopers.toModify(tobTecStepTrajectoryBuilder,
+                           maxPtForLooperReconstruction = 0.0)
 # Important note for LowPU: in RunI_TobTecStep the
 # inOutTrajectoryFilter parameter is spelled as
 # inOutTrajectoryFilterName, and I suspect it has no effect there. I
@@ -267,16 +271,15 @@ import RecoTracker.CkfPattern.CkfTrackCandidates_cfi
 # Give handle for CKF for HI
 _tobTecStepTrackCandidatesCkf = RecoTracker.CkfPattern.CkfTrackCandidates_cfi.ckfTrackCandidates.clone(
     src = 'tobTecStepSeeds',
-    clustersToSkip              = cms.InputTag('tobTecStepClusters'),
+    clustersToSkip              = 'tobTecStepClusters',
     ### these two parameters are relevant only for the CachingSeedCleanerBySharedInput
-    numHitsForSeedCleaner       = cms.int32(50),
-    onlyPixelHitsForSeedCleaner = cms.bool(False),
-
-    TrajectoryBuilderPSet       = cms.PSet(refToPSet_ = cms.string('tobTecStepTrajectoryBuilder')),
+    numHitsForSeedCleaner       = 50,
+    onlyPixelHitsForSeedCleaner = False,
+    TrajectoryBuilderPSet       = dict(refToPSet_ = 'tobTecStepTrajectoryBuilder'),
     doSeedingRegionRebuilding   = True,
     useHitsSplitting            = True,
     cleanTrajectoryAfterInOut   = True,
-    TrajectoryCleaner = 'tobTecStepTrajectoryCleanerBySharedHits'
+    TrajectoryCleaner = 'tobTecStepTrajectoryCleanerBySharedHits',
 )
 tobTecStepTrackCandidates = _tobTecStepTrackCandidatesCkf.clone()
 
@@ -302,6 +305,7 @@ trackingMkFitTobTecStep.toReplaceWith(tobTecStepTrackCandidates, mkFitOutputConv
     mkFitSeeds = 'tobTecStepTrackCandidatesMkFitSeeds',
     tracks = 'tobTecStepTrackCandidatesMkFit',
 ))
+(pp_on_XeXe_2017 | pp_on_AA).toModify(tobTecStepTrackCandidatesMkFitConfig, minPt=2.0)
 
 import FastSimulation.Tracking.TrackCandidateProducer_cfi
 fastSim.toReplaceWith(tobTecStepTrackCandidates,
@@ -408,11 +412,12 @@ trackingPhase1.toReplaceWith(tobTecStep, tobTecStepClassifier1.clone(
      qualityCuts = [-0.6,-0.45,-0.3]
 ))
 
-from RecoTracker.FinalTrackSelectors.TrackTfClassifier_cfi import *
+from RecoTracker.FinalTrackSelectors.trackTfClassifier_cfi import *
 from RecoTracker.FinalTrackSelectors.trackSelectionTf_cfi import *
-trackdnn.toReplaceWith(tobTecStep, TrackTfClassifier.clone(
+from RecoTracker.FinalTrackSelectors.trackSelectionTf_CKF_cfi import *
+trackdnn.toReplaceWith(tobTecStep, trackTfClassifier.clone(
      src         = 'tobTecStepTracks',
-     qualityCuts = qualityCutDictionary["TobTecStep"]
+     qualityCuts = qualityCutDictionary.TobTecStep.value()
 ))
 (trackdnn & fastSim).toModify(tobTecStep,vertices = 'firstStepPrimaryVerticesBeforeMixing')
 

@@ -102,7 +102,7 @@ GeometricDet::GeometricDet(DDFilteredView* fv, GeometricEnumType type)
 }
 
 /*
-  Constructor from DD4HEP Filtered view.
+  Constructor from DD4hep Filtered view.
 */
 GeometricDet::GeometricDet(cms::DDFilteredView* fv, GeometricEnumType type)
     : ddname_(dd4hep::dd::noNamespace(fv->name())),
@@ -342,4 +342,14 @@ std::vector<double> GeometricDet::computeLegacyShapeParameters(const cms::DDSoli
   }
 
   return myOldDDShapeParameters;
+}
+
+std::string GeometricDet::printNavType(int const* n, size_t sz) {
+  std::ostringstream oss;
+  oss << '(';
+  for (int const* it = n; it != n + sz; ++it) {
+    oss << *it << ',';
+  }
+  oss << ')';
+  return oss.str();
 }

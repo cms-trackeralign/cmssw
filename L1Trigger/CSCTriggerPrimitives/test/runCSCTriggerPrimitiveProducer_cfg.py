@@ -6,6 +6,12 @@ from Configuration.Eras.Era_Run2_2018_cff import Run2_2018
 options = VarParsing('analysis')
 options.register("unpack", False, VarParsing.multiplicity.singleton, VarParsing.varType.bool,
                  "Set to True when you want to unpack the CSC DAQ data.")
+options.register("selectCSCs", False, VarParsing.multiplicity.singleton, VarParsing.varType.bool,
+                 "Set to True when you want to (un)select certain CSCs.")
+options.register("maskedChambers", "", VarParsing.multiplicity.list, VarParsing.varType.string,
+                 "Chambers you want to explicitly mask.")
+options.register("selectedChambers", "", VarParsing.multiplicity.list, VarParsing.varType.string,
+                 "Chambers you want to explicitly mask.")
 options.register("unpackGEM", False, VarParsing.multiplicity.singleton, VarParsing.varType.bool,
                  "Set to True when you want to unpack the GEM DAQ data.")
 options.register("l1", False, VarParsing.multiplicity.singleton, VarParsing.varType.bool,
@@ -18,6 +24,8 @@ options.register("dqm", False, VarParsing.multiplicity.singleton, VarParsing.var
                  "Set to True when you want to run the CSC DQM")
 options.register("dqmGEM", False, VarParsing.multiplicity.singleton, VarParsing.varType.bool,
                  "Set to True when you want to run the GEM DQM")
+options.register("useEmtfGEM", False, VarParsing.multiplicity.singleton, VarParsing.varType.bool,
+                 "Set to True when you want to use GEM clusters from the EMTF in the DQM")
 options.register("useB904ME11", False, VarParsing.multiplicity.singleton, VarParsing.varType.bool,
                  "Set to True when using B904 ME1/1 data.")
 options.register("useB904ME21", False, VarParsing.multiplicity.singleton, VarParsing.varType.bool,
@@ -26,8 +34,6 @@ options.register("useB904ME234s2", False, VarParsing.multiplicity.singleton, Var
                  "Set to True when using B904 ME1/1 data (also works for MEX/2 and ME1/3).")
 options.register("run3", True, VarParsing.multiplicity.singleton, VarParsing.varType.bool,
                  "Set to True when using Run-3 data.")
-options.register("runCCLUT", False, VarParsing.multiplicity.singleton, VarParsing.varType.bool,
-                 "Set to True when using the CCLUT algorithm (to be superseded soon).")
 options.register("runCCLUTOTMB", False, VarParsing.multiplicity.singleton, VarParsing.varType.bool,
                  "Set to True when using the CCLUT OTMB algorithm.")
 options.register("runCCLUTTMB", False, VarParsing.multiplicity.singleton, VarParsing.varType.bool,
@@ -59,6 +65,7 @@ process.load('Configuration.StandardSequences.EndOfProcess_cff')
 process.load('Configuration.EventContent.EventContent_cff')
 process.load("EventFilter.CSCRawToDigi.cscUnpacker_cfi")
 process.load('EventFilter.GEMRawToDigi.muonGEMDigis_cfi')
+process.load('EventFilter.L1TRawToDigi.emtfStage2Digis_cfi')
 process.load("L1Trigger.CSCTriggerPrimitives.cscTriggerPrimitiveDigis_cfi")
 process.load("CalibMuon.CSCCalibration.CSCL1TPLookupTableEP_cff")
 process.load('L1Trigger.L1TGEM.simGEMDigis_cff')
@@ -91,7 +98,7 @@ from Configuration.AlCa.GlobalTag import GlobalTag
 if options.mc:
       process.GlobalTag = GlobalTag(process.GlobalTag, 'auto:run2_mc', '')
       if options.run3:
-            process.GlobalTag = GlobalTag(process.GlobalTag, 'auto:phase1_2021_realistic', '')
+            process.GlobalTag = GlobalTag(process.GlobalTag, 'auto:phase1_2022_realistic', '')
 else:
       process.GlobalTag = GlobalTag(process.GlobalTag, 'auto:run2_data', '')
       if options.run3:
@@ -117,7 +124,6 @@ if useB904Data:
 ## l1 emulator
 l1csc = process.cscTriggerPrimitiveDigis
 if options.l1:
-      l1csc.commonParam.runCCLUT = options.runCCLUT
       l1csc.commonParam.runCCLUT_OTMB = cms.bool(options.runCCLUTOTMB)
       l1csc.commonParam.runCCLUT_TMB = cms.bool(options.runCCLUTTMB)
       l1csc.commonParam.runME11ILT = options.runME11ILT
@@ -144,7 +150,13 @@ if options.dqm:
       process.l1tdeCSCTPG.preTriggerAnalysis = options.preTriggerAnalysis
 
 if options.dqmGEM:
-      process.l1tdeGEMTPG.data = "muonCSCDigis"
+      ## GEM pad clusters from the EMTF
+      if options.useEmtfGEM:
+            process.l1tdeGEMTPG.data = "emtfStage2Digis"
+      ## GEM pad clusters from the CSC TPG
+      else:
+            process.l1tdeGEMTPG.data = "muonCSCDigis"
+      ## GEM pad clusters from the GEM TPG
       process.l1tdeGEMTPG.emul = "simMuonGEMPadDigiClusters"
 
 # Output
@@ -186,8 +198,42 @@ process.DQMoutput = cms.OutputModule("DQMRootOutputModule",
 
 ## schedule and path definition
 process.unpacksequence = cms.Sequence(process.muonCSCDigis)
+
+## when unpacking data only from select chambers...
+if options.selectCSCs:
+
+      from EventFilter.CSCRawToDigi.cscDigiFilterDef_cfi import cscDigiFilterDef
+
+      # clone the original producer
+      process.preCSCDigis = process.muonCSCDigis.clone()
+
+      # now apply the filter
+      process.muonCSCDigis = cscDigiFilterDef.clone(
+            stripDigiTag = "preCSCDigis:MuonCSCStripDigi",
+            wireDigiTag = "preCSCDigis:MuonCSCWireDigi",
+            compDigiTag = "preCSCDigis:MuonCSCComparatorDigi",
+            alctDigiTag = "preCSCDigis:MuonCSCALCTDigi",
+            clctDigiTag = "preCSCDigis:MuonCSCCLCTDigi",
+            lctDigiTag = "preCSCDigis:MuonCSCCorrelatedLCTDigi",
+            showerDigiTag = "preCSCDigis:MuonCSCShowerDigi",
+            gemPadClusterDigiTag = "preCSCDigis:MuonGEMPadDigiCluster",
+            maskedChambers = options.maskedChambers,
+            selectedChambers = options.selectedChambers
+      )
+
+      # these 3 chambers had Phase-2 firmware loaded partially during Run-2
+      # https://twiki.cern.ch/twiki/bin/viewauth/CMS/CSCOTMB2018
+      process.muonCSCDigis.maskedChambers = [
+            "ME+1/1/9", "ME+1/1/10", "ME+1/1/11"]
+
+      process.unpacksequence = cms.Sequence(process.preCSCDigis * process.muonCSCDigis)
+
 if options.unpackGEM:
+      ## unpack GEM strip digis
       process.unpacksequence += process.muonGEMDigis
+      ## unpack GEM pad clusters from the EMTF
+      if options.useEmtfGEM:
+            process.unpacksequence += process.emtfStage2Digis
 process.p1 = cms.Path(process.unpacksequence)
 
 process.l1sequence = cms.Sequence(l1csc)
