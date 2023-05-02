@@ -1,6 +1,7 @@
 ## PV validation
 
 ### General info
+
 ```
 validations:
     MTS:
@@ -14,7 +15,8 @@ MTS validation runs in 1 possible type of steps:
 Step name is arbitrary string which will be used as a reference for consequent steps.
 Merge and trend jobs are not yet implemented.
 
-### Single PV jobs:
+### Single PV jobs
+
 Single jobs can be specified per run (IoV as well). In case of MC, IoV is specified to arbitrary 1.
 
 **Parameters below to be updated**
