@@ -1,13 +1,15 @@
 import json
+import yaml
 import os
 import FWCore.ParameterSet.Config as cms
 import FWCore.PythonUtilities.LumiList as LumiList
 from Alignment.OfflineValidation.TkAlAllInOneTool.defaultInputFiles_cff import filesDefaultData_Cosmics_string
 from FWCore.ParameterSet.VarParsing import VarParsing
 from Alignment.OfflineValidation.TkAlAllInOneTool.utils import _byteify
+import pdb
 
 ###################################################################
-# Define process 
+# Define process
 ###################################################################
 process = cms.Process("MTSValidation")
 
@@ -22,11 +24,14 @@ options.parseArguments()
 # Read in AllInOne config in JSON format
 ###################################################################
 if options.config == "":
-    config = {"validation": {},
-              "alignment": {}}
+  config = {"validation": {},
+            "alignment": {}}
 else:
-    with open(options.config, "r") as configFile:
-        config = json.load(configFile)
+  with open(options.config, "r") as configFile:
+    if options.config.endswith(".json"):
+      config = json.load(configFile)
+    elif options.config.endswith(".yaml"):
+      config = yaml.safe_load(configFile)
 
 ###################################################################
 # Read filenames from given TXT file and define input source
@@ -43,11 +48,11 @@ if "dataset" in config["validation"]:
                                 skipEvents = cms.untracked.uint32(0)
                                )
 else:
-    print(">>>>>>>>>> MTS_cfg.py: msg%-i: config not specified! Loading default file -> filesDefaultData_Cosmics_string!")
+    print(">>>>>>>>>> MTS_cfg.py: msg%-i: dataset not specified! Loading default file -> filesDefaultData_Cosmics_string!")
     process.source = cms.Source("PoolSource",
-                                fileNames = filesDefaultData_Cosmics_string,
+                                fileNames = cms.untracked.vstring(filesDefaultData_Cosmics_string),
                                 skipEvents = cms.untracked.uint32(0)
-                               ) 
+                               )
 
 ###################################################################
 # Get good lumi section and load data or handle MC
@@ -111,7 +116,7 @@ import Alignment.CommonAlignment.tools.trackselectionRefitting as trackselRefit
 process.seqTrackselRefit = trackselRefit.getSequence(
   process,
   config["validation"].get("trackcollection", "ALCARECOTkAlCosmicsCTF0T"),
-  isPVValidation = False, 
+  isPVValidation = False,
   TTRHBuilder = config["validation"].get("tthrbuilder", "WithAngleAndTemplate"),
   usePixelQualityFlag=config["validation"].get("usePixelQualityFlag", True),
   openMassWindow = False,
@@ -133,21 +138,28 @@ process.GlobalTag = GlobalTag(process.GlobalTag, config["alignment"].get("global
 # Load conditions if wished
 ####################################################################
 if "conditions" in config["alignment"]:
-    from CalibTracker.Configuration.Common.PoolDBESSource_cfi import poolDBESSource
+  from CalibTracker.Configuration.Common.PoolDBESSource_cfi import poolDBESSource
 
-    for condition in config["alignment"]["conditions"]:
-        setattr(process, "conditionsIn{}".format(condition), poolDBESSource.clone(
-             connect = cms.string(str(config["alignment"]["conditions"][condition]["connect"])),
-             toGet = cms.VPSet(
-                        cms.PSet(
-                                 record = cms.string(str(condition)),
-                                 tag = cms.string(str(config["alignment"]["conditions"][condition]["tag"]))
-                        )            )
-                     )
-            )
+  for condition in config["alignment"]["conditions"]:
+    setattr(
+      process,
+      "conditionsIn{}".format(condition),
+      poolDBESSource.clone(
+        connect = cms.string(str(config["alignment"]["conditions"][condition]["connect"])),
+        toGet = cms.VPSet(
+          cms.PSet(
+            record = cms.string(str(condition)),
+            tag = cms.string(str(config["alignment"]["conditions"][condition]["tag"]))
+          )
         )
+      )
+    )
 
-        setattr(process, "prefer_conditionsIn{}".format(condition), cms.ESPrefer("PoolDBESSource", "conditionsIn{}".format(condition)))
+    setattr(
+      process,
+      "prefer_conditionsIn{}".format(condition),
+      cms.ESPrefer("PoolDBESSource", "conditionsIn{}".format(condition))
+    )
 
 ####################################################################
 # Configure the Analyzer module
