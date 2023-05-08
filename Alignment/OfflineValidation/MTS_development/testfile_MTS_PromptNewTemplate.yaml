@@ -1,0 +1,26 @@
+LFS: $CMSSW_BASE/src/testMTS
+name: testMTS
+alignment:
+  name: PromptNewTemplate
+  color: 1
+  globaltag: 124X_dataRun3_Prompt_v10 
+  style: 2301
+  title: Alignment in prompt with 400V pixel templates
+  conditions:
+     SiPixelTemplateDBObjectRcd:
+       connect: frontier://FrontierProd/CMS_CONDITIONS
+       tag: SiPixelTemplateDBObject_phase1_38T_2022_v9
+     SiPixel2DTemplateDBObjectRcd:
+       connect: frontier://FrontierProd/CMS_CONDITIONS
+       tag: SiPixel2DTemplateDBObject_phase1_38T_2022_v9
+
+validation:
+  alignments:
+    - PromptNewTemplate
+  maxevents: 200000
+  #dataset: data_Run2022G_Cosmics_ALCARECO_TkAlCosmics0T-PromptReco-v1_filelist.txt 
+  trackcollection: ALCARECOTkAlCosmicsCTF0T
+  tthrbuilder: WithAngleAndTemplate
+  usePixelQualityFlag: True
+  cosmicsZeroTesla: False
+  magneticfield: 3.8

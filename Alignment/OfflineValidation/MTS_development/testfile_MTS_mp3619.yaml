@@ -1,0 +1,29 @@
+LFS: $CMSSW_BASE/src/testMTS
+name: testMTS
+alignment:
+  name: mp3619
+  color: 2
+  globaltag: 124X_dataRun3_Prompt_v10 
+  style: 2001
+  title: mp3619 
+  conditions:
+    TrackerAlignmentRcd:
+      connect: sqlite_file:/afs/cern.ch/cms/CAF/CMSALCA/ALCA_TRACKERALIGN/MP/MPproduction/mp3619/jobData/jobm/alignments_MP.db
+      tag: Alignments
+    SiPixelTemplateDBObjectRcd:
+      connect: frontier://FrontierProd/CMS_CONDITIONS
+      tag: SiPixelTemplateDBObject_phase1_38T_2022_v9
+    SiPixel2DTemplateDBObjectRcd:
+      connect: frontier://FrontierProd/CMS_CONDITIONS
+      tag: SiPixel2DTemplateDBObject_phase1_38T_2022_v9
+
+validation:
+  alignments:
+    - PromptNewTemplate
+  maxevents: 200000
+  #dataset: data_Run2022G_Cosmics_ALCARECO_TkAlCosmics0T-PromptReco-v1_filelist.txt 
+  trackcollection: ALCARECOTkAlCosmicsCTF0T
+  tthrbuilder: WithAngleAndTemplate
+  usePixelQualityFlag: True
+  cosmicsZeroTesla: False
+  magneticfield: 3.8
