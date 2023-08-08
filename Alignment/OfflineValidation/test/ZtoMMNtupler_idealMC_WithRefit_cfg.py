@@ -6,7 +6,7 @@ from FWCore.ParameterSet.VarParsing import VarParsing
 
 options = VarParsing('analysis')
 options.register('scenario', 
-                 'radial', 
+                 '0',
                  VarParsing.multiplicity.singleton,
                  VarParsing.varType.string,
                  "Name of input misalignment scenario")
@@ -19,7 +19,7 @@ if options.scenario not in valid_scenarios:
     print(valid_scenarios)
     exit(1)
 
-process = cms.Process("AlCaRECOAnalysis")
+process = cms.Process("DiMuonAnalysis")
 
 ###################################################################
 # Set the process to run multi-threaded
@@ -86,11 +86,12 @@ else :
 ###################################################################
 # Source
 ###################################################################
-filelist = FileUtils.loadListFromFile("listOfFiles_idealMC_TkAlDiMuonAndVertex.txt")
+#filelist = FileUtils.loadListFromFile("listOfFiles_idealMC_TkAlDiMuonAndVertex.txt")
+filelist = FileUtils.loadListFromFile("listOfFiles_idealMC_GEN-SIM-RECO.txt")
 readFiles = cms.untracked.vstring( *filelist)
 process.source = cms.Source("PoolSource",fileNames = readFiles)
 
-process.maxEvents = cms.untracked.PSet(input = cms.untracked.int32(-1))
+process.maxEvents = cms.untracked.PSet(input = cms.untracked.int32(options.maxEvents))
 
 ###################################################################
 # Alignment Track Selector
@@ -131,18 +132,32 @@ process.refittedVtxTracks = RecoTracker.TrackProducer.TrackRefitter_cfi.TrackRef
     NavigationSchool = '',
     TTRHBuilder = "WithAngleAndTemplate")
 
+###################################################################
+# refitting all tracks
+###################################################################
+process.refittedTracks = RecoTracker.TrackProducer.TrackRefitter_cfi.TrackRefitter.clone(
+    src = "generalTracks",
+    TrajectoryInEvent = True,
+    NavigationSchool = '',
+    TTRHBuilder = "WithAngleAndTemplate")
+
 ####################################################################
 # Re-do vertices
 ####################################################################
 from RecoVertex.PrimaryVertexProducer.OfflinePrimaryVertices_cfi import offlinePrimaryVertices
 process.offlinePrimaryVerticesFromRefittedTrks = offlinePrimaryVertices.clone()
-process.offlinePrimaryVerticesFromRefittedTrks.TrackLabel = cms.InputTag("refittedVtxTracks")
+#process.offlinePrimaryVerticesFromRefittedTrks.TrackLabel = cms.InputTag("refittedVtxTracks")
+process.offlinePrimaryVerticesFromRefittedTrks.TrackLabel = cms.InputTag("refittedTracks")
 
 ###################################################################
 # The analysis modules
 ###################################################################
 process.ZtoMMNtuple = cms.EDAnalyzer("ZtoMMNtupler",
-                                     tracks = cms.InputTag('refittedMuons'),
+                                     #tracks = cms.InputTag('refittedMuons'),
+                                     useReco = cms.bool(True),
+                                     muons = cms.InputTag('muons'),
+                                     doGen = cms.bool(True),
+                                     tracks = cms.InputTag('refittedTracks'),
                                      vertices = cms.InputTag('offlinePrimaryVerticesFromRefittedTrks'))
 
 process.DiMuonVertexValidation = cms.EDAnalyzer("DiMuonVertexValidation",
@@ -203,15 +218,16 @@ process.DiMuonMassValidation = _diMuonValidation.clone(
 # Output name
 ###################################################################
 process.TFileService = cms.Service("TFileService",
-                                   fileName = cms.string("ZmmNtuple_MC_"+options.scenario+".root"))
+                                   fileName = cms.string("ZmmNtuple_MC_GEN-SIM_"+options.scenario+".root"))
 
 ###################################################################
 # Path
 ###################################################################
 process.p1 = cms.Path(process.offlineBeamSpot
-                      * process.refittedMuons
-                      * process.refittedVtxTracks
+                      #* process.refittedMuons
+                      #* process.refittedVtxTracks
+                      * process.refittedTracks
                       * process.offlinePrimaryVerticesFromRefittedTrks
-                      * process.ZtoMMNtuple 
-                      * process.DiMuonVertexValidation
-                      * process.DiMuonMassValidation)
+                      * process.ZtoMMNtuple) 
+                      #* process.DiMuonVertexValidation
+                      #* process.DiMuonMassValidation)

@@ -1,6 +1,9 @@
 #include "CommonTools/UtilAlgos/interface/TFileService.h"
 #include "DataFormats/BeamSpot/interface/BeamSpot.h"
+#include "DataFormats/HepMCCandidate/interface/GenParticle.h"
 #include "DataFormats/Math/interface/deltaR.h"
+#include "DataFormats/MuonReco/interface/Muon.h"
+#include "DataFormats/MuonReco/interface/MuonFwd.h"
 #include "DataFormats/TrackReco/interface/Track.h"
 #include "DataFormats/TrackReco/interface/TrackFwd.h"
 #include "DataFormats/VertexReco/interface/Vertex.h"
@@ -28,11 +31,26 @@ public:
 
 private:
   void analyze(const edm::Event& event, const edm::EventSetup& setup) override;
-  double openingAngle(const reco::Track& track1, const reco::Track& track2);
-  std::pair<unsigned int, reco::Vertex> findClosestVertex(const reco::Track& track1,
+  double openingAngle(const reco::Track* track1, const reco::Track* track2);
+  std::pair<unsigned int, reco::Vertex> findClosestVertex(const reco::Track* track1,
                                                           const reco::VertexCollection& vertices);
+  const bool useReco_;
+  const bool doGen_;
+  std::vector<double> pTthresholds_;
 
-  const edm::EDGetTokenT<reco::TrackCollection> trackToken_;
+  // either on or the other!
+  //used to select what muon tracks to read from configuration file
+  edm::EDGetTokenT<reco::MuonCollection> muonsToken_;
+  //used to select what tracks to read from configuration file
+  edm::EDGetTokenT<reco::TrackCollection> alcaRecoToken_;
+
+  //used to select what tracks to read from configuration file
+  edm::EDGetTokenT<reco::TrackCollection> tracksToken_;
+
+  // for associated genParticles
+  edm::EDGetTokenT<edm::View<reco::Candidate>> genParticlesToken_;
+  //edm::EDGetTokenT<std::vector<reco::GenParticle>> genParticlesToken_;
+
   const edm::EDGetTokenT<reco::VertexCollection> vtxToken_;
   const edm::EDGetTokenT<reco::BeamSpot> bsToken_;
 
@@ -51,6 +69,14 @@ private:
   float posTrackPt_;
   float negTrackPt_;
 
+  // for the gen-level info
+  float genPosMuonEta_;
+  float genNegMuonEta_;
+  float genPosMuonPhi_;
+  float genNegMuonPhi_;
+  float genPosMuonPt_;
+  float genNegMuonPt_;
+
   // control histograms
   TH2I* h_VertexMatrix;
   TH1F* h_cutFlow;
@@ -60,7 +86,9 @@ private:
 };
 
 ZtoMMNtupler::ZtoMMNtupler(const edm::ParameterSet& iConfig)
-    : trackToken_(consumes<reco::TrackCollection>(iConfig.getParameter<edm::InputTag>("tracks"))),
+    : useReco_(iConfig.getParameter<bool>("useReco")),
+      doGen_(iConfig.getParameter<bool>("doGen")),
+      pTthresholds_(iConfig.getParameter<std::vector<double>>("pTThresholds")),
       vtxToken_(consumes<reco::VertexCollection>(iConfig.getParameter<edm::InputTag>("vertices"))),
       bsToken_(consumes<reco::BeamSpot>(iConfig.getParameter<edm::InputTag>("beamSpot"))),
       mass_{0},
@@ -73,8 +101,33 @@ ZtoMMNtupler::ZtoMMNtupler(const edm::ParameterSet& iConfig)
       posTrackPhi_{0},
       negTrackPhi_{0},
       posTrackPt_{0},
-      negTrackPt_{0} {
+      negTrackPt_{0},
+      genPosMuonEta_{-99.},
+      genNegMuonEta_{-99.},
+      genPosMuonPhi_{-99.},
+      genNegMuonPhi_{-99.},
+      genPosMuonPt_{-99.},
+      genNegMuonPt_{-99.} {
+  if (useReco_) {
+    tracksToken_ = mayConsume<reco::TrackCollection>(iConfig.getParameter<edm::InputTag>("tracks"));
+    muonsToken_ = mayConsume<reco::MuonCollection>(iConfig.getParameter<edm::InputTag>("muons"));
+  } else {
+    alcaRecoToken_ = mayConsume<reco::TrackCollection>(iConfig.getParameter<edm::InputTag>("muonTracks"));
+  }
+
+  if (doGen_) {
+    genParticlesToken_ = consumes<edm::View<reco::Candidate>>(iConfig.getParameter<edm::InputTag>("genParticles"));
+  }
+
   usesResource(TFileService::kSharedResource);
+
+  // sort the vector of thresholds
+  std::sort(pTthresholds_.begin(), pTthresholds_.end(), [](const double& lhs, const double& rhs) { return lhs > rhs; });
+
+  edm::LogInfo("ZtoMMNtupler") << __FUNCTION__;
+  for (const auto& thr : pTthresholds_) {
+    edm::LogInfo("ZtoMMNtupler") << " Threshold: " << thr << " ";
+  }
 
   edm::Service<TFileService> fs;
   h_cutFlow = fs->make<TH1F>("cutFlow", "cutFlow;cut;remaining events", 9, -0.5, 8.5);
@@ -117,28 +170,116 @@ ZtoMMNtupler::ZtoMMNtupler(const edm::ParameterSet& iConfig)
   tree_->Branch("negTrackPhi", &negTrackPhi_, "negTrackPhi/F");
   tree_->Branch("posTrackPt", &posTrackPt_, "posTrackPt/F");
   tree_->Branch("negTrackPt", &negTrackPt_, "negTrackPt/F");
+
+  if (doGen_) {
+    tree_->Branch("genPosMuonEta", &genPosMuonEta_, "genPosMuonEta/F");
+    tree_->Branch("genNegMuonEta", &genNegMuonEta_, "genNegMuonEta/F");
+    tree_->Branch("genPosMuonPhi", &genPosMuonPhi_, "genPosMuonPhi/F");
+    tree_->Branch("genNegMuonPhi", &genNegMuonPhi_, "genNegMuonPhi/F");
+    tree_->Branch("genPosMuonPt", &genPosMuonPt_, "genPosMuonPt/F");
+    tree_->Branch("genNegMuonPt", &genNegMuonPt_, "genNegMuonPt/F");
+  }
 }
 
 void ZtoMMNtupler::fillDescriptions(edm::ConfigurationDescriptions& descriptions) {
   edm::ParameterSetDescription desc;
-  desc.add<edm::InputTag>("tracks", edm::InputTag("ALCARECOTkAlZMuMu"));
+  desc.ifValue(
+          edm::ParameterDescription<bool>("useReco", true, true),
+          true >> edm::ParameterDescription<edm::InputTag>("muons", edm::InputTag("muons"), true) or
+              false >> edm::ParameterDescription<edm::InputTag>("muonTracks", edm::InputTag("ALCARECOTkAlZMuMu"), true))
+      ->setComment("If useReco is true need to specify the muon tracks, otherwise take the ALCARECO Inner tracks");
+  desc.add<bool>("doGen", false);
+  desc.add<edm::InputTag>("genParticles", edm::InputTag("genParticles"));
+  desc.add<edm::InputTag>("tracks", edm::InputTag("generalTracks"));
   desc.add<edm::InputTag>("vertices", edm::InputTag("offlinePrimaryVertices"));
   desc.add<edm::InputTag>("beamSpot", edm::InputTag("offlineBeamSpot"));
+  desc.add<std::vector<double>>("pTThresholds", {30., 10.});
   descriptions.addWithDefaultLabel(desc);
 }
 
 void ZtoMMNtupler::analyze(const edm::Event& event, const edm::EventSetup& setup) {
   h_cutFlow->Fill(0);
 
-  const reco::TrackCollection& tracks = event.get(trackToken_);
+  // the di-muon tracks
+  std::vector<const reco::Track*> myTracks;
+
+  // if we have to start from scratch from RECO data-tier
+  if (useReco_) {
+    // select the good muons
+    std::vector<const reco::Muon*> myGoodMuonVector;
+    for (const auto& muon : event.get(muonsToken_)) {
+      const reco::TrackRef t = muon.innerTrack();
+      if (!t.isNull()) {
+        if (t->quality(reco::TrackBase::highPurity)) {
+          if (t->chi2() / t->ndof() <= 2.5 && t->numberOfValidHits() >= 5 &&
+              t->hitPattern().numberOfValidPixelHits() >= 2 && t->quality(reco::TrackBase::highPurity))
+            myGoodMuonVector.emplace_back(&muon);
+        }
+      }
+    }
+
+    LogDebug("ZtoMMNtupler") << "myGoodMuonVector size: " << myGoodMuonVector.size() << std::endl;
+    std::sort(myGoodMuonVector.begin(), myGoodMuonVector.end(), [](const reco::Muon*& lhs, const reco::Muon*& rhs) {
+      return lhs->pt() > rhs->pt();
+    });
+
+    // just check the ordering
+    for (const auto& muon : myGoodMuonVector) {
+      LogDebug("ZtoMMNtupler") << "pT: " << muon->pt() << " ";
+    }
+    LogDebug("ZtoMMNtupler") << std::endl;
+
+    // reject if there's no Z
+    if (myGoodMuonVector.size() < 2)
+      return;
+
+    if ((myGoodMuonVector[0]->pt()) < pTthresholds_[0] || (myGoodMuonVector[1]->pt() < pTthresholds_[1]))
+      return;
+
+    if (myGoodMuonVector[0]->charge() * myGoodMuonVector[1]->charge() > 0)
+      return;
+
+    //const auto& m1 = myGoodMuonVector[1]->p4();
+    //const auto& m0 = myGoodMuonVector[0]->p4();
+    //const auto& mother = m0 + m1;
+
+    // just copy the top two muons
+    std::vector<const reco::Muon*> theZMuonVector;
+    theZMuonVector.reserve(2);
+    theZMuonVector.emplace_back(myGoodMuonVector[1]);
+    theZMuonVector.emplace_back(myGoodMuonVector[0]);
+
+    // do the matching of Z muons with inner tracks
+    unsigned int i = 0;
+    for (const auto& muon : theZMuonVector) {
+      i++;
+      float minD = 1000.;
+      const reco::Track* theMatch = nullptr;
+      for (const auto& track : event.get(tracksToken_)) {
+        float D = ::deltaR(muon->eta(), muon->phi(), track.eta(), track.phi());
+        if (D < minD) {
+          minD = D;
+          theMatch = &track;
+        }
+      }
+      LogDebug("ZtoMMNtupler") << "pushing new track: " << i << std::endl;
+      myTracks.emplace_back(theMatch);
+    }
+  } else {
+    // we start directly with the pre-selected ALCARECO tracks
+    for (const auto& muon : event.get(alcaRecoToken_)) {
+      myTracks.emplace_back(&muon);
+    }
+  }
+
   const reco::VertexCollection& vertices = event.get(vtxToken_);
   const reco::BeamSpot& beamSpot = event.get(bsToken_);
   math::XYZPoint bs(beamSpot.x0(), beamSpot.y0(), beamSpot.z0());
 
-  //edm::LogPrint("ZtoMMNtupler") << " track size:" << tracks.size() << " vertex size:" << vertices.size() << std::endl;
+  //edm::LogPrint("ZtoMMNtupler") << " track size:" << myTracks.size() << " vertex size:" << vertices.size() << std::endl;
 
-  if ((tracks.size() != 2)) {
-    LogTrace("ZtoMMNtupler") << "Found " << tracks.size() << " muons in the event. Skipping";
+  if ((myTracks.size() != 2)) {
+    LogTrace("ZtoMMNtupler") << "Found " << myTracks.size() << " muons in the event. Skipping";
     return;
   }
 
@@ -155,39 +296,39 @@ void ZtoMMNtupler::analyze(const edm::Event& event, const edm::EventSetup& setup
   unsigned int vtxIndex[2] = {999, 999};
 
   unsigned int i = 0;
-  for (const auto& track : tracks) {
-    if (track.pt() < 12) {
+  for (const auto& track : myTracks) {
+    if (track->pt() < 12) {
       passPtCut = false;
       continue;
     }
 
-    if (std::abs(track.eta()) > 2.5) {
+    if (std::abs(track->eta()) > 2.5) {
       passEtaCut = false;
       continue;
     }
 
     const auto& closestVertex = this->findClosestVertex(track, vertices);
     vtxIndex[i] = closestVertex.first;
-    d0[i] = track.dxy(closestVertex.second.position());
-    dz[i] = track.dz(closestVertex.second.position());
+    d0[i] = track->dxy(closestVertex.second.position());
+    dz[i] = track->dz(closestVertex.second.position());
 
-    if (d0[i] / track.dxyError() > 4) {
+    if (d0[i] / track->dxyError() > 4) {
       passD0sigCut = false;
       continue;
     }
 
-    if (track.charge() > 0) {
+    if (track->charge() > 0) {
       posTrackDz_ = dz[i];
       posTrackD0_ = d0[i];
-      posTrackEta_ = track.eta();
-      posTrackPhi_ = track.phi();
-      posTrackPt_ = track.pt();
+      posTrackEta_ = track->eta();
+      posTrackPhi_ = track->phi();
+      posTrackPt_ = track->pt();
     } else {
       negTrackDz_ = dz[i];
       negTrackD0_ = d0[i];
-      negTrackEta_ = track.eta();
-      negTrackPhi_ = track.phi();
-      negTrackPt_ = track.pt();
+      negTrackEta_ = track->eta();
+      negTrackPhi_ = track->phi();
+      negTrackPt_ = track->pt();
     }
     i++;
   }
@@ -242,7 +383,7 @@ void ZtoMMNtupler::analyze(const edm::Event& event, const edm::EventSetup& setup
   h_cutFlow->Fill(7);
 
   // checks if the di-muon system passes the opening angle cut
-  double openingAngle = this->openingAngle(tracks[0], tracks[1]);
+  double openingAngle = this->openingAngle(myTracks[0], myTracks[1]);
   h_CosOpeningAngle->Fill(openingAngle);
   passOpeningAngle = true;  //(openingAngle > M_PI/4.);
 
@@ -250,13 +391,48 @@ void ZtoMMNtupler::analyze(const edm::Event& event, const edm::EventSetup& setup
     return;
   h_cutFlow->Fill(8);
 
+  if (doGen_) {
+    const edm::View<reco::Candidate>* genPartCollection = &event.get(genParticlesToken_);
+
+    // loop on the reconstructed tracks
+    for (const auto& track : myTracks) {
+      float drmin = 0.1;
+      // loop on the gen particles
+      for (auto g = genPartCollection->begin(); g != genPartCollection->end(); ++g) {
+        if (g->status() != 1)
+          continue;
+
+        if (std::abs(g->pdgId()) != 13)
+          continue;
+
+        if (g->charge() != track->charge())
+          continue;
+
+        float dR = reco::deltaR(*g, *track);
+        if (dR < drmin) {
+          drmin = dR;
+
+          if (g->charge() > 0) {
+            genPosMuonPt_ = g->pt();
+            genPosMuonEta_ = g->eta();
+            genPosMuonPhi_ = g->phi();
+          } else {
+            genNegMuonPt_ = g->pt();
+            genNegMuonEta_ = g->eta();
+            genNegMuonPhi_ = g->phi();
+          }
+        }
+      }
+    }
+  }
+
   // if all cuts are passed fill the TTree
   tree_->Fill();
 }
 
-double ZtoMMNtupler::openingAngle(const reco::Track& trk1, const reco::Track& trk2) {
-  math::XYZVector vec1(trk1.px(), trk1.py(), trk1.pz());
-  math::XYZVector vec2(trk2.px(), trk2.py(), trk2.pz());
+double ZtoMMNtupler::openingAngle(const reco::Track* trk1, const reco::Track* trk2) {
+  math::XYZVector vec1(trk1->px(), trk1->py(), trk1->pz());
+  math::XYZVector vec2(trk2->px(), trk2->py(), trk2->pz());
   return vec1.Dot(vec2) / (vec1.R() * vec2.R());
 }
 
@@ -270,7 +446,7 @@ double ZtoMMNtupler::openingAngle(const reco::Track& track1, const reco::Track& 
 }
 */
 
-std::pair<unsigned int, reco::Vertex> ZtoMMNtupler::findClosestVertex(const reco::Track& track,
+std::pair<unsigned int, reco::Vertex> ZtoMMNtupler::findClosestVertex(const reco::Track* track,
                                                                       const reco::VertexCollection& vertices) {
   // Initialize variables for minimum distance and closest vertex
   double minDistance = std::numeric_limits<double>::max();
@@ -282,8 +458,8 @@ std::pair<unsigned int, reco::Vertex> ZtoMMNtupler::findClosestVertex(const reco
     const math::XYZPoint& vertexPosition = vertex.position();
 
     // Calculate the distance to the track
-    const auto& trackMomentum = track.momentum();
-    const auto& vertexToPoint = vertexPosition - track.referencePoint();
+    const auto& trackMomentum = track->momentum();
+    const auto& vertexToPoint = vertexPosition - track->referencePoint();
     double distance = vertexToPoint.Cross(trackMomentum).R() / trackMomentum.R();
 
     // Check if this is the closest vertex so far

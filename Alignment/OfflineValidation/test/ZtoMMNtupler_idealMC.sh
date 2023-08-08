@@ -13,7 +13,8 @@ eval `scramv1 runtime -sh`
 cd $LXBATCH_DIR
 
 cp ${CMSSW_DIR}/ZtoMMNtupler_idealMC_WithRefit_cfg.py .
-cp ${CMSSW_DIR}/listOfFiles_idealMC_TkAlDiMuonAndVertex.txt .
+#cp ${CMSSW_DIR}/listOfFiles_idealMC_TkAlDiMuonAndVertex.txt .
+cp ${CMSSW_DIR}/listOfFiles_idealMC_GEN-SIM-RECO.txt .
 echo "cmsRun ${CMSSW_DIR}/ZtoMMNtupler_idealMC_WithRefit_cfg.py scenario=${myScenario}"
 
 cmsRun ZtoMMNtupler_idealMC_WithRefit_cfg.py scenario=${myScenario} >& ${JobName}.out
