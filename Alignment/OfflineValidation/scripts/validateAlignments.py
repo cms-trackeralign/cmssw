@@ -18,6 +18,7 @@ import Alignment.OfflineValidation.TkAlAllInOneTool.Zmumu as Zmumu
 import Alignment.OfflineValidation.TkAlAllInOneTool.PV as PV
 import Alignment.OfflineValidation.TkAlAllInOneTool.SplitV as SplitV
 import Alignment.OfflineValidation.TkAlAllInOneTool.JetHT as JetHT
+import Alignment.OfflineValidation.TkAlAllInOneTool.MTS as MTS
 
 ##############################################
 def parser():
@@ -262,6 +263,8 @@ def main():
         elif validation == "JetHT":
             jobs.extend(JetHT.JetHT(config, validationDir))
 
+        elif validation == "MTS":
+            jobs.extend(MTS.MTS(config, validationDir))
         else:
             raise Exception("Unknown validation method: {}".format(validation)) 
             

@@ -1,0 +1,57 @@
+LFS: $CMSSW_BASE/src/Alignment/OfflineValidation/MTS_development
+name: testMTSfull
+alignments:
+  PromptNewTemplate:
+    name: PromptNewTemplate
+    color: 1
+    globaltag: 124X_dataRun3_Prompt_v10 
+    style: 2301
+    title: Alignment in prompt with 400V pixel templates
+    conditions:
+      SiPixelTemplateDBObjectRcd:
+        connect: frontier://FrontierProd/CMS_CONDITIONS
+        tag: SiPixelTemplateDBObject_phase1_38T_2022_v9
+      SiPixel2DTemplateDBObjectRcd:
+        connect: frontier://FrontierProd/CMS_CONDITIONS
+        tag: SiPixel2DTemplateDBObject_phase1_38T_2022_v9
+
+  mp3619:
+    name: mp3619
+    color: 2
+    globaltag: 124X_dataRun3_Prompt_v10 
+    style: 2001
+    title: mp3619 
+    conditions:
+      TrackerAlignmentRcd:
+# FIXME%START
+#        connect: sqlite_file:/afs/cern.ch/cms/CAF/CMSALCA/ALCA_TRACKERALIGN/MP/MPproduction/mp3619/jobData/jobm/alignments_MP.db
+# FIXME%END
+        connect: /afs/cern.ch/cms/CAF/CMSALCA/ALCA_TRACKERALIGN/MP/MPproduction/mp3619/jobData/jobm/alignments_MP.db
+        tag: Alignments
+      SiPixelTemplateDBObjectRcd:
+        connect: frontier://FrontierProd/CMS_CONDITIONS
+        tag: SiPixelTemplateDBObject_phase1_38T_2022_v9
+      SiPixel2DTemplateDBObjectRcd:
+        connect: frontier://FrontierProd/CMS_CONDITIONS
+        tag: SiPixel2DTemplateDBObject_phase1_38T_2022_v9
+
+validations:
+  MTS:
+    single:
+      testSingle:
+        IOV:
+          - 1
+        alignments:
+          - PromptNewTemplate
+          - mp3619
+        dataset: /afs/cern.ch/user/f/fvazzole/work/EPRs/tracker-alignment/newTool/CMSSW_12_4_12/src/Alignment/OfflineValidation/MTS_development/data_Run2022G_Cosmics_ALCARECO_TkAlCosmics0T-PromptReco-v1_filelist.txt 
+        maxevents: 200000
+        trackcollection: ALCARECOTkAlCosmicsCTF0T
+        tthrbuilder: WithAngleAndTemplate
+        usePixelQualityFlag: True
+        cosmicsZeroTesla: False
+        magneticfield: 3.8
+
+#style:
+#  MTS:
+    
