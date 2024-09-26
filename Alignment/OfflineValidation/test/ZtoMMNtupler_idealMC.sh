@@ -21,9 +21,9 @@ cmsRun ZtoMMNtupler_idealMC_WithRefit_cfg.py scenario=${myScenario} >& ${JobName
 
 echo "Content of working directory is: " `ls -lrt`
 
-eos mkdir -p /eos/cms/store/group/alca_trackeralign/$USER/test_out/layerRotation_studies
+eos mkdir -p /eos/cms/store/group/alca_trackeralign/$USER/test_out/MCTruthStudiesOut
 
-for payloadOutput in $(ls *root ); do xrdcp -f $payloadOutput root://eoscms.cern.ch//eos/cms/store/group/alca_trackeralign/$USER/test_out/layerRotation_studies; done
+for payloadOutput in $(ls *root ); do xrdcp -f $payloadOutput root://eoscms.cern.ch//eos/cms/store/group/alca_trackeralign/$USER/test_out/MCTruthStudiesOut; done
 
 mv ${JobName}.out ${CMSSW_DIR}/outfiles
 mv ${JobName}.err ${CMSSW_DIR}/outfiles

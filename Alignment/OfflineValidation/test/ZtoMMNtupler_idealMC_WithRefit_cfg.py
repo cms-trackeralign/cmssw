@@ -12,7 +12,7 @@ options.register('scenario',
                  "Name of input misalignment scenario")
 options.parseArguments()
 
-valid_scenarios = ['-10e-6','-8e-6','-6e-6','-4e-6','-2e-6','0','2e-6','4e-6','6e-6','8e-6','10e-6']
+valid_scenarios = ['null','ideal','2022MC','2023MC','2024MC']
 
 if options.scenario not in valid_scenarios:
     print("Error: Invalid scenario specified. Please choose from the following list: ")
@@ -77,6 +77,35 @@ elif (options.scenario=='ideal'):
                                                  tag = cms.string("TrackerAlignmentErrorsExtended_Upgrade2017_design_v0")),
                                         cms.PSet(record = cms.string('TrackerSurfaceDeformationRcd'),
                                                  tag = cms.string("TrackerSurfaceDeformations_zero")))
+
+elif (options.scenario=='2022MC'):
+    print("using {} scenario".format(options.scenario))
+    process.GlobalTag.toGet = cms.VPSet(cms.PSet(record = cms.string('TrackerAlignmentRcd'),
+                                                 tag = cms.string("TrackerAlignment_Run3MC_2022_mp3911_jobm3"),
+                                                 connect = cms.string("frontier://FrontierPrep/CMS_CONDITIONS")),
+                                        cms.PSet(record = cms.string('TrackerAlignmentErrorExtendedRcd'),
+                                                 tag = cms.string("TrackerAlignmentExtendedErrors_Run3MC_2023_rereco_v1")),
+                                        cms.PSet(record = cms.string('TrackerSurfaceDeformationRcd'),
+                                                 tag = cms.string("TrackerSurfaceDeformations_Run3MC_2022_mp3911_jobm3"),
+                                                 connect = cms.string("frontier://FrontierPrep/CMS_CONDITIONS")))    
+elif (options.scenario=='2023MC'):
+    print("using {} scenario".format(options.scenario))
+    process.GlobalTag.toGet = cms.VPSet(cms.PSet(record = cms.string('TrackerAlignmentRcd'),
+                                                 tag = cms.string("TrackerAlignment_Run3MC_2023_rereco_v1")),
+                                        cms.PSet(record = cms.string('TrackerAlignmentErrorExtendedRcd'),
+                                                 tag = cms.string("TrackerAlignmentExtendedErrors_Run3MC_2023_rereco_v2")),
+                                        cms.PSet(record = cms.string('TrackerSurfaceDeformationRcd'),
+                                                 tag = cms.string("TrackerAlignmentSurfaceDeformations_Run3MC_2023_rereco_v1")))
+elif (options.scenario=='2024MC'):
+    print("using {} scenario".format(options.scenario))
+    process.GlobalTag.toGet = cms.VPSet(cms.PSet(record = cms.string('TrackerAlignmentRcd'),
+                                                 tag = cms.string("TrackerAlignment_Run3MC_2024_mp3950_jobm1"),
+                                                 connect = cms.string("frontier://FrontierPrep/CMS_CONDITIONS")),
+                                        cms.PSet(record = cms.string('TrackerAlignmentErrorExtendedRcd'),
+                                                 tag = cms.string("TrackerAlignmentExtendedErrors_Run3MC_2023_rereco_v1")),
+                                        cms.PSet(record = cms.string('TrackerSurfaceDeformationRcd'),
+                                                 tag = cms.string("TrackerSurfaceDeformations_Run3MC_2024_mp3950_jobm1"),
+                                                 connect = cms.string("frontier://FrontierPrep/CMS_CONDITIONS")))
 else :
     print("using {} scenario".format(options.scenario))
     process.GlobalTag.toGet = cms.VPSet(cms.PSet(connect = cms.string("sqlite_file:/afs/cern.ch/user/m/musich/public/layer_rotation_studies/outputfile_"+options.scenario+".db"),                                             
@@ -156,6 +185,7 @@ process.ZtoMMNtuple = cms.EDAnalyzer("ZtoMMNtupler",
                                      #tracks = cms.InputTag('refittedMuons'),
                                      useReco = cms.bool(True),
                                      muons = cms.InputTag('muons'),
+                                     stateOnSurface =  cms.string('OuterSurface'),
                                      doGen = cms.bool(True),
                                      tracks = cms.InputTag('refittedTracks'),
                                      vertices = cms.InputTag('offlinePrimaryVerticesFromRefittedTrks'))
@@ -174,7 +204,7 @@ process.DiMuonMassValidation = _diMuonValidation.clone(
     TkTag = 'refittedMuons',
     #TkTag = 'TrackRefitter1',
     # mu mu mass
-    Pair_mass_min   = 80.,
+    Pair_mass_min   = 60.,
     Pair_mass_max   = 120.,
     Pair_mass_nbins = 80,
     Pair_etaminpos  = -2.4,

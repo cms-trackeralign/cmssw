@@ -9,7 +9,8 @@ else
 fi
 
 # Define an array
-scenarios=('-10e-6' '-8e-6' '-6e-6' '-4e-6' '-2e-6' '0' '2e-6' '4e-6' '6e-6' '8e-6' '10e-6')
+scenarios=('ideal' 'null' '2022MC' '2023MC' '2024MC')
+#scenarios=('2022MC' '2024MC')
 
 # Loop over the array and print each element
 for scenario in "${scenarios[@]}"

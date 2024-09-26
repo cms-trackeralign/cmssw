@@ -5,5 +5,5 @@ output                = $(par2)/outfiles/ZtoMuMuNtuplization_$(par1).out
 error                 = $(par2)/outfiles/ZtoMuMuNtuplization_$(par1).err
 log                   = $(par2)/outfiles/ZtoMuMuNtuplization_$(par1).log
 transfer_output_files = ""
-+JobFlavour = "workday" 
++JobFlavour = "testmatch" 
 queue
