@@ -16,6 +16,9 @@
 #include "FWCore/Framework/interface/one/EDAnalyzer.h"
 #include "FWCore/ParameterSet/interface/ParameterSet.h"
 #include "FWCore/ServiceRegistry/interface/Service.h"
+#include "TrackingTools/Records/interface/TransientTrackRecord.h"
+#include "TrackingTools/TransientTrack/interface/TransientTrackBuilder.h"
+#include "TrackingTools/TransientTrack/interface/TransientTrack.h"
 
 #include "TH1F.h"
 #include "TH2I.h"
@@ -36,6 +39,7 @@ private:
                                                           const reco::VertexCollection& vertices);
   const bool useReco_;
   const bool doGen_;
+  const std::string sName_;
   std::vector<double> pTthresholds_;
 
   // either on or the other!
@@ -50,6 +54,9 @@ private:
   // for associated genParticles
   edm::EDGetTokenT<edm::View<reco::Candidate>> genParticlesToken_;
   //edm::EDGetTokenT<std::vector<reco::GenParticle>> genParticlesToken_;
+
+  // for the transient track
+  edm::ESGetToken<TransientTrackBuilder, TransientTrackRecord> transientTrackBuilderToken_;
 
   const edm::EDGetTokenT<reco::VertexCollection> vtxToken_;
   const edm::EDGetTokenT<reco::BeamSpot> bsToken_;
@@ -88,6 +95,7 @@ private:
 ZtoMMNtupler::ZtoMMNtupler(const edm::ParameterSet& iConfig)
     : useReco_(iConfig.getParameter<bool>("useReco")),
       doGen_(iConfig.getParameter<bool>("doGen")),
+      sName_(iConfig.getParameter<std::string>("stateOnSurface")),
       pTthresholds_(iConfig.getParameter<std::vector<double>>("pTThresholds")),
       vtxToken_(consumes<reco::VertexCollection>(iConfig.getParameter<edm::InputTag>("vertices"))),
       bsToken_(consumes<reco::BeamSpot>(iConfig.getParameter<edm::InputTag>("beamSpot"))),
@@ -117,6 +125,11 @@ ZtoMMNtupler::ZtoMMNtupler(const edm::ParameterSet& iConfig)
 
   if (doGen_) {
     genParticlesToken_ = consumes<edm::View<reco::Candidate>>(iConfig.getParameter<edm::InputTag>("genParticles"));
+  }
+
+  if (sName_ != "default") {
+    transientTrackBuilderToken_ =
+        esConsumes<TransientTrackBuilder, TransientTrackRecord>(edm::ESInputTag("", "TransientTrackBuilder"));
   }
 
   usesResource(TFileService::kSharedResource);
@@ -189,6 +202,7 @@ void ZtoMMNtupler::fillDescriptions(edm::ConfigurationDescriptions& descriptions
               false >> edm::ParameterDescription<edm::InputTag>("muonTracks", edm::InputTag("ALCARECOTkAlZMuMu"), true))
       ->setComment("If useReco is true need to specify the muon tracks, otherwise take the ALCARECO Inner tracks");
   desc.add<bool>("doGen", false);
+  desc.add<std::string>("stateOnSurface", "default");
   desc.add<edm::InputTag>("genParticles", edm::InputTag("genParticles"));
   desc.add<edm::InputTag>("tracks", edm::InputTag("generalTracks"));
   desc.add<edm::InputTag>("vertices", edm::InputTag("offlinePrimaryVertices"));
@@ -317,18 +331,46 @@ void ZtoMMNtupler::analyze(const edm::Event& event, const edm::EventSetup& setup
       continue;
     }
 
-    if (track->charge() > 0) {
-      posTrackDz_ = dz[i];
-      posTrackD0_ = d0[i];
-      posTrackEta_ = track->eta();
-      posTrackPhi_ = track->phi();
-      posTrackPt_ = track->pt();
+    if (sName_ == "default") {
+      if (track->charge() > 0) {
+        posTrackDz_ = dz[i];
+        posTrackD0_ = d0[i];
+        posTrackEta_ = track->eta();
+        posTrackPhi_ = track->phi();
+        posTrackPt_ = track->pt();
+      } else {
+        negTrackDz_ = dz[i];
+        negTrackD0_ = d0[i];
+        negTrackEta_ = track->eta();
+        negTrackPhi_ = track->phi();
+        negTrackPt_ = track->pt();
+      }
     } else {
-      negTrackDz_ = dz[i];
-      negTrackD0_ = d0[i];
-      negTrackEta_ = track->eta();
-      negTrackPhi_ = track->phi();
-      negTrackPt_ = track->pt();
+      TransientTrackBuilder const& theB = setup.getData(transientTrackBuilderToken_);
+      reco::TransientTrack TransTrack = theB.build(track);
+
+      TrajectoryStateOnSurface TSOS;
+
+      if (sName_ == "OuterSurface")
+        TSOS = TransTrack.outermostMeasurementState();
+      else if (sName_ == "InnerSurface")
+        TSOS = TransTrack.innermostMeasurementState();
+      else if (sName_ == "ImpactPoint")
+        TSOS = TransTrack.impactPointState();
+
+      if (TSOS.charge() > 0) {
+        posTrackDz_ = dz[i];
+        posTrackD0_ = d0[i];
+        posTrackEta_ = TSOS.globalMomentum().eta();
+        posTrackPhi_ = TSOS.globalMomentum().phi();
+        posTrackPt_ = TSOS.globalMomentum().perp();
+      } else {
+        posTrackDz_ = dz[i];
+        posTrackD0_ = d0[i];
+        negTrackEta_ = TSOS.globalMomentum().eta();
+        negTrackPhi_ = TSOS.globalMomentum().phi();
+        negTrackPt_ = TSOS.globalMomentum().perp();
+      }
     }
     i++;
   }
