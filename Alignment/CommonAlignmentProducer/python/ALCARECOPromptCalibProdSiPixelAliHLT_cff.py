@@ -1,24 +1,32 @@
 import FWCore.ParameterSet.Config as cms
-import copy
 # ------------------------------------------------------------------------------
 # configure a filter to run only on the events selected by TkAlMinBias AlcaReco
 from Alignment.CommonAlignmentProducer.ALCARECOPromptCalibProdSiPixelAli_cff import *
-ALCARECOTkAlMinBiasFilterForSiPixelAliHLT = ALCARECOTkAlMinBiasFilterForSiPixelAli.clone() # ??? 
+ALCARECOTkAlMinBiasFilterForSiPixelAliHLT = ALCARECOTkAlMinBiasFilterForSiPixelAli.clone() 
 
 from Alignment.CommonAlignmentProducer.LSNumberFilter_cfi import *
 
-# Ingredient: offlineBeamSpot
-from RecoVertex.BeamSpotProducer.BeamSpot_cfi import offlineBeamSpot
+# Ingredient: onlineBeamSpot
+import RecoVertex.BeamSpotProducer.BeamSpotOnline_cfi
+onlineBeamSpot = RecoVertex.BeamSpotProducer.BeamSpotOnline_cfi.onlineBeamSpotProducer.clone()
+
+
+# Ingredient: ALCARECOTkAlMinBiasHLT
+from Alignment.CommonAlignmentProducer.ALCARECOTkAlMinBias_cff import ALCARECOTkAlMinBias
+ALCARECOTkAlMinBiasHLT = Alignment.CommonAlignmentProducer.ALCARECOTkAlMinBias_cff.ALCARECOTkAlMinBias.clone(
+    src = cms.InputTag("hltMergedTracks")
+)
+
 
 # Ingredient: AlignmentTrackSelector
 # track selector for HighPurity tracks
 #-- AlignmentTrackSelector
 from Alignment.CommonAlignmentProducer.AlignmentTrackSelector_cfi import AlignmentTrackSelector
-SiPixelAliHighPuritySelectorHLT = AlignmentTrackSelector.clone(
+SiPixelAliLooseSelectorHLT = AlignmentTrackSelector.clone(
     applyBasicCuts = True,
     #filter = True,
-    src = cms.InputTag("hltMergedTracks"), # ???
-    trackQualities = ["highPurity"],
+    src = 'ALCARECOTkAlMinBiasHLT',
+    trackQualities = ["loose"],
     pMin = 4.,
 )
 
@@ -38,47 +46,7 @@ from RecoTracker.TrackProducer.TrackRefitter_cfi import *
 # In the following use
 # TrackRefitter (normal tracks), TrackRefitterP5 (cosmics) or TrackRefitterBHM (beam halo)
 
-SiPixelAliTrackRefitterHLT0 = TrackRefitter.clone(
-        src = 'SiPixelAliHighPuritySelectorHLT',   #'ALCARECOTkAlMinBias'#'ALCARECOTkAlCosmicsCTF0T' #'ALCARECOTkAlMuonIsolated'
-        NavigationSchool = '',            # to avoid filling hit pattern
-        TTRHBuilder = 'hltESPTTRHBWithTrackAngle' # Defined below ???
-        )
 
-SiPixelAliTrackRefitterHLT1 = SiPixelAliTrackRefitter0.clone(
-	src = 'SiPixelAliTrackSelectorHLT'
-)
-
-#-- Alignment producer
-from Alignment.MillePedeAlignmentAlgorithm.MillePedeAlignmentAlgorithm_cfi import *
-from Alignment.CommonAlignmentProducer.AlignmentProducerAsAnalyzer_cff import AlignmentProducer
-SiPixelAliMilleAlignmentProducerHLT = SiPixelAliMilleAlignmentProducer.clone(
-    tjTkAssociationMapTag = 'SiPixelAliTrackRefitterHLT1',
-    algoConfig = MillePedeAlignmentAlgorithm.clone(
-        binaryFile = 'milleBinaryHLT_0.dat',
-        treeFile = 'treeFileHLT.root',
-        monitorFile = 'millePedeMonitorHLT.root'
-        )
-)
-# Does anything else of the AlignmentProducer need to be overwritten ???
-
-
-
-
-# Ingredient: SiPixelAliTrackerTrackHitFilter
-SiPixelAliTrackerTrackHitFilterHLT = SiPixelAliTrackerTrackHitFilter.clone(
-	src = 'SiPixelAliTrackRefitterHLT0'
-)
-
-
-# Ingredient: SiPixelAliSiPixelAliTrackFitter
-import RecoTracker.TrackProducer.CTFFinalFitWithMaterial_cff as fitWithMaterial
-SiPixelAliTrackFitterHLT = fitWithMaterial.ctfWithMaterialTracks.clone(
-        src = 'SiPixelAliTrackerTrackHitFilterHLT',
-        # TTRHBuilder = 'hltESPTTRHBWithTrackAngle', #should already be default ???
-        NavigationSchool = ''
-        )
-
-# Ingredient: hltESPTTRHBWithTrackAngle
 hltESPPixelCPEGeneric = cms.ESProducer( 
     "PixelCPEGenericESProducer",
     LoadTemplatesFromDB = cms.bool( True ),
@@ -135,15 +103,45 @@ hltESPTTRHBWithTrackAngle = cms.ESProducer(
     appendToDataLabel = cms.string( "" )
 )
 
-### Ingredient: MillePedeFileConverter
-##from Alignment.CommonAlignmentProducer.MillePedeFileConverter_cfi import millePedeFileConverter
-### We configure the input file name of the millePedeFileConverter
-###         with the output file name of the alignmentProducer (=looper).
-### Like this we are sure that they are well connected.
-##SiPixelAliMillePedeFileConverter = millePedeFileConverter.clone(
-##        fileDir = looper.algoConfig.fileDir,
-##        binaryFile = looper.algoConfig.binaryFile,
-##        )
+SiPixelAliTrackRefitterHLT0 = TrackRefitter.clone(
+        src = 'SiPixelAliLooseSelectorHLT',   #'ALCARECOTkAlMinBias'#'ALCARECOTkAlCosmicsCTF0T' #'ALCARECOTkAlMuonIsolated'
+        NavigationSchool = '',            # to avoid filling hit pattern
+        TTRHBuilder = 'hltESPTTRHBWithTrackAngle'
+        )
+
+SiPixelAliTrackRefitterHLT1 = SiPixelAliTrackRefitter0.clone(
+	src = 'SiPixelAliTrackSelectorHLT'
+)
+
+#-- Alignment producer
+from Alignment.MillePedeAlignmentAlgorithm.MillePedeAlignmentAlgorithm_cfi import *
+from Alignment.CommonAlignmentProducer.AlignmentProducerAsAnalyzer_cff import AlignmentProducer
+SiPixelAliMilleAlignmentProducerHLT = SiPixelAliMilleAlignmentProducer.clone(
+    tjTkAssociationMapTag = 'SiPixelAliTrackRefitterHLT1',
+    algoConfig = MillePedeAlignmentAlgorithm.clone(
+        binaryFile = 'milleBinaryHLT_0.dat',
+        treeFile = 'treeFileHLT.root',
+        monitorFile = 'millePedeMonitorHLT.root'
+        )
+)
+# Does anything else of the AlignmentProducer need to be overwritten ???
+
+
+
+
+# Ingredient: SiPixelAliTrackerTrackHitFilterHLT
+SiPixelAliTrackerTrackHitFilterHLT = SiPixelAliTrackerTrackHitFilter.clone(
+	src = 'SiPixelAliTrackRefitterHLT0'
+)
+
+
+# Ingredient: SiPixelAliTrackFitterHLT
+import RecoTracker.TrackProducer.CTFFinalFitWithMaterial_cff as fitWithMaterial
+SiPixelAliTrackFitterHLT = fitWithMaterial.ctfWithMaterialTracks.clone(
+        src = 'SiPixelAliTrackerTrackHitFilterHLT',
+        # TTRHBuilder = 'hltESPTTRHBWithTrackAngle', #should already be default ???
+        NavigationSchool = ''
+        )
 
 SiPixelAliMillePedeFileConverterHLT = cms.EDProducer( 
     "MillePedeFileConverter",
@@ -159,8 +157,8 @@ SiPixelAliMillePedeFileConverterHLT = cms.EDProducer(
 seqALCARECOPromptCalibProdSiPixelAli = cms.Sequence(
     ALCARECOTkAlMinBiasFilterForSiPixelAliHLT*
     LSNumberFilter*
-    offlineBeamSpot*
-    SiPixelAliHighPuritySelectorHLT*
+    onlineBeamSpot*
+    SiPixelAliLooseSelectorHLT*
     SiPixelAliTrackRefitterHLT0*
     SiPixelAliTrackerTrackHitFilterHLT*
     SiPixelAliTrackFitterHLT*
