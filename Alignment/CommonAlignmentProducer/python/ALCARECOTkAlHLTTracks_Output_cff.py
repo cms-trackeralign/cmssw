@@ -1,0 +1,21 @@
+import FWCore.ParameterSet.Config as cms
+
+# AlCaReco for track based alignment using MinBias events
+OutALCARECOTkAlHLTTracks_noDrop = cms.PSet(
+    SelectEvents = cms.untracked.PSet(
+        SelectEvents = cms.vstring('pathALCARECOTkAlHLTTracks')
+    ),
+    outputCommands = cms.untracked.vstring(
+        'keep recoTracks_ALCARECOTkAlHLTTracks_*_*',
+        'keep recoTrackExtras_ALCARECOTkAlHLTTracks_*_*',
+        'keep TrackingRecHitsOwned_ALCARECOTkAlHLTTracks_*_*',
+        'keep SiPixelClusteredmNewDetSetVector_ALCARECOTkAlHLTTracks_*_*',
+        'keep SiStripClusteredmNewDetSetVector_ALCARECOTkAlHLTTracks_*_*',
+        'keep L1AcceptBunchCrossings_*_*_*',
+        'keep L1GlobalTriggerReadoutRecord_gtDigis_*_*',
+        'keep *_TriggerResults_*_*',
+        'keep DcsStatuss_scalersRawToDigi_*_*',
+        'keep *_offlinePrimaryVertices_*_*',
+        'keep *_offlineBeamSpot_*_*')
+)
+
