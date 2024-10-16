@@ -104,10 +104,10 @@ hltESPTTRHBWithTrackAngle = cms.ESProducer(
 )
 
 SiPixelAliTrackRefitterHLT0 = TrackRefitter.clone(
-        src = 'SiPixelAliLooseSelectorHLT',   #'ALCARECOTkAlMinBias'#'ALCARECOTkAlCosmicsCTF0T' #'ALCARECOTkAlMuonIsolated'
-        NavigationSchool = '',            # to avoid filling hit pattern
-        TTRHBuilder = 'hltESPTTRHBWithTrackAngle'
-        )
+    src = 'SiPixelAliLooseSelectorHLT',   #'ALCARECOTkAlMinBias'#'ALCARECOTkAlCosmicsCTF0T' #'ALCARECOTkAlMuonIsolated'
+    NavigationSchool = '',            # to avoid filling hit pattern
+    TTRHBuilder = 'hltESPTTRHBWithTrackAngle'
+)
 
 SiPixelAliTrackRefitterHLT1 = SiPixelAliTrackRefitter0.clone(
 	src = 'SiPixelAliTrackSelectorHLT'
@@ -122,7 +122,7 @@ SiPixelAliMilleAlignmentProducerHLT = SiPixelAliMilleAlignmentProducer.clone(
         binaryFile = 'milleBinaryHLT_0.dat',
         treeFile = 'treeFileHLT.root',
         monitorFile = 'millePedeMonitorHLT.root'
-        )
+    )
 )
 # Does anything else of the AlignmentProducer need to be overwritten ???
 
@@ -138,17 +138,15 @@ SiPixelAliTrackerTrackHitFilterHLT = SiPixelAliTrackerTrackHitFilter.clone(
 # Ingredient: SiPixelAliTrackFitterHLT
 import RecoTracker.TrackProducer.CTFFinalFitWithMaterial_cff as fitWithMaterial
 SiPixelAliTrackFitterHLT = fitWithMaterial.ctfWithMaterialTracks.clone(
-        src = 'SiPixelAliTrackerTrackHitFilterHLT',
-        # TTRHBuilder = 'hltESPTTRHBWithTrackAngle', #should already be default ???
-        NavigationSchool = ''
-        )
+    src = 'SiPixelAliTrackerTrackHitFilterHLT',
+    # TTRHBuilder = 'hltESPTTRHBWithTrackAngle', #should already be default ???
+    NavigationSchool = ''
+)
 
 SiPixelAliMillePedeFileConverterHLT = cms.EDProducer( 
     "MillePedeFileConverter",
-    #FIXME: convert to untracked?
     fileDir = cms.string(SiPixelAliMilleAlignmentProducerHLT.algoConfig.fileDir.value()),
     inputBinaryFile = cms.string(SiPixelAliMilleAlignmentProducerHLT.algoConfig.binaryFile.value()),
-    #FIXME: why was the label removed? Don't we want a label?
     fileBlobLabel = cms.string(''),
 )
 

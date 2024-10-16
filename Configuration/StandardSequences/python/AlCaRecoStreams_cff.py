@@ -169,6 +169,8 @@ from Calibration.TkAlCaRecoProducers.ALCARECOSiStripPCLHistos_cff import *
 from Alignment.CommonAlignmentProducer.ALCARECOPromptCalibProdSiPixelAli_cff import *
 from Alignment.CommonAlignmentProducer.ALCARECOPromptCalibProdSiPixelAliHG_cff import *
 from Alignment.CommonAlignmentProducer.ALCARECOPromptCalibProdSiPixelAliHGDiMuon_cff import *
+from Alignment.CommonAlignmentProducer.ALCARECOPromptCalibProdSiPixelAliHLTHG_cff import *
+from Alignment.CommonAlignmentProducer.ALCARECOPromptCalibProdSiPixelAliHLTHGDiMuon_cff import *
 
 from CalibTracker.SiPixelQuality.ALCARECOPromptCalibProdSiPixel_cff import *
 
@@ -297,6 +299,8 @@ pathALCARECOPromptCalibProdSiPixelAli = cms.Path(seqALCARECOPromptCalibProdSiPix
 pathALCARECOPromptCalibProdSiPixelAliHG = cms.Path(seqALCARECOPromptCalibProdSiPixelAliHG)
 pathALCARECOPromptCalibProdSiPixelAliHGMinBias = cms.Path(seqALCARECOPromptCalibProdSiPixelAliHG)
 pathALCARECOPromptCalibProdSiPixelAliHGDiMu = cms.Path(seqALCARECOPromptCalibProdSiPixelAliHGDiMu)
+pathALCARECOPromptCalibProdSiPixelAliHLTHGMinBias = cms.Path(seqALCARECOPromptCalibProdSiPixelAliHLTHG)
+pathALCARECOPromptCalibProdSiPixelAliHLTHGDiMu = cms.Path(seqALCARECOPromptCalibProdSiPixelAliHLTHGDiMu)
 pathALCARECOPromptCalibProdSiPixel = cms.Path(seqALCARECOPromptCalibProdSiPixel)
 pathALCARECOPromptCalibProdEcalPedestals = cms.Path(seqALCARECOPromptCalibProdEcalPedestals)
 pathALCARECOPromptCalibProdLumiPCC = cms.Path(seqALCARECOPromptCalibProdLumiPCC)
@@ -1089,6 +1093,16 @@ ALCARECOStreamPromptCalibProdSiPixelAliHGComb = cms.FilteredStream(
 	paths  = (pathALCARECOPromptCalibProdSiPixelAliHGMinBias,pathALCARECOPromptCalibProdSiPixelAliHGDiMu),
 	content = OutALCARECOPromptCalibProdSiPixelAliHGComb.outputCommands,
 	selectEvents = OutALCARECOPromptCalibProdSiPixelAliHGComb.SelectEvents,
+	dataTier = cms.untracked.string('ALCARECO')
+	)
+
+
+ALCARECOStreamPromptCalibProdSiPixelAliHLTHGC = cms.FilteredStream(
+	responsible = 'Philipp Nattland',
+	name = 'PromptCalibProdSiPixelAliHLTHGC',
+	paths  = (pathALCARECOPromptCalibProdSiPixelAliHLTHGMinBias,pathALCARECOPromptCalibProdSiPixelAliHLTHGDiMu),
+	content = OutALCARECOPromptCalibProdSiPixelAliHLTHGC.outputCommands,
+	selectEvents = OutALCARECOPromptCalibProdSiPixelAliHLTHGC.SelectEvents,
 	dataTier = cms.untracked.string('ALCARECO')
 	)
 
