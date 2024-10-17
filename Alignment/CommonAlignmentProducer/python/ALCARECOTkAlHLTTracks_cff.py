@@ -31,7 +31,6 @@ ALCARECOTkAlHLTTracks.applyBasicCuts = True
 ALCARECOTkAlHLTTracks.ptMin = 0.65 ##GeV
 ALCARECOTkAlHLTTracks.pMin = 1.5 ##GeV
 
-
 ALCARECOTkAlHLTTracks.etaMin = -3.5
 ALCARECOTkAlHLTTracks.etaMax = 3.5
 ALCARECOTkAlHLTTracks.nHitMin = 7 ## at least 7 hits required

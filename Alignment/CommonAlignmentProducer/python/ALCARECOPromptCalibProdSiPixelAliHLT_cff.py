@@ -12,11 +12,10 @@ onlineBeamSpot = RecoVertex.BeamSpotProducer.BeamSpotOnline_cfi.onlineBeamSpotPr
 
 
 # Ingredient: ALCARECOTkAlMinBiasHLT
-from Alignment.CommonAlignmentProducer.ALCARECOTkAlMinBias_cff import ALCARECOTkAlMinBias
-ALCARECOTkAlMinBiasHLT = Alignment.CommonAlignmentProducer.ALCARECOTkAlMinBias_cff.ALCARECOTkAlMinBias.clone(
+from  Alignment.CommonAlignmentProducer.ALCARECOTkAlMinBias_cff import ALCARECOTkAlMinBias
+ALCARECOTkAlMinBiasHLT = ALCARECOTkAlMinBias.clone(
     src = cms.InputTag("hltMergedTracks")
 )
-
 
 # Ingredient: AlignmentTrackSelector
 # track selector for HighPurity tracks
@@ -30,13 +29,10 @@ SiPixelAliLooseSelectorHLT = AlignmentTrackSelector.clone(
     pMin = 4.,
 )
 
-
-
 # track selection for alignment
 SiPixelAliTrackSelectorHLT = SiPixelAliTrackSelector.clone( 
 	src = 'SiPixelAliTrackFitterHLT',
 )
-
 
 # Ingredient: SiPixelAliTrackRefitter0
 # refitting
@@ -45,7 +41,6 @@ from RecoTracker.Configuration.RecoTrackerP5_cff import *
 from RecoTracker.TrackProducer.TrackRefitter_cfi import *
 # In the following use
 # TrackRefitter (normal tracks), TrackRefitterP5 (cosmics) or TrackRefitterBHM (beam halo)
-
 
 hltESPPixelCPEGeneric = cms.ESProducer( 
     "PixelCPEGenericESProducer",
@@ -149,8 +144,6 @@ SiPixelAliMillePedeFileConverterHLT = cms.EDProducer(
     inputBinaryFile = cms.string(SiPixelAliMilleAlignmentProducerHLT.algoConfig.binaryFile.value()),
     fileBlobLabel = cms.string(''),
 )
-
-
 
 seqALCARECOPromptCalibProdSiPixelAli = cms.Sequence(
     ALCARECOTkAlMinBiasFilterForSiPixelAliHLT*

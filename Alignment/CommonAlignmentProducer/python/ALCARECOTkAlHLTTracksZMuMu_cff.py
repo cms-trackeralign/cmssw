@@ -24,7 +24,7 @@ ALCARECOTkAlHLTTracksZMuMuDCSFilter = DPGAnalysis.Skims.skim_detstatus_cfi.dcsst
 
 import Alignment.CommonAlignmentProducer.TkAlMuonSelectors_cfi
 ALCARECOTkAlHLTTracksZMuMuGoodMuons = Alignment.CommonAlignmentProducer.TkAlMuonSelectors_cfi.TkAlGoodIdMuonSelector.clone(
-    src =  cms.InputTag("hltPFMuonMerging") # TODO type cast to muon ???
+    #    src =  cms.InputTag("hltPFMuonMerging") # TODO type cast to muon ???
 )
 ALCARECOTkAlHLTTracksZMuMuRelCombIsoMuons = Alignment.CommonAlignmentProducer.TkAlMuonSelectors_cfi.TkAlRelCombIsoMuonSelector.clone(
     src = 'ALCARECOTkAlHLTTracksZMuMuGoodMuons'
@@ -55,13 +55,6 @@ ALCARECOTkAlHLTTracksZMuMu.TwoBodyDecaySelector.charge = 0
 ALCARECOTkAlHLTTracksZMuMu.TwoBodyDecaySelector.applyAcoplanarityFilter = False
 ALCARECOTkAlHLTTracksZMuMu.TwoBodyDecaySelector.numberOfCandidates = 1
 
-## for the GEN level information
-TkAlHLTTracksZMuMuGenMuonSelector = cms.EDFilter("GenParticleSelector",
-                                        src = cms.InputTag("genParticles"),
-                                        cut = cms.string("abs(pdgId) == 13"), # Select only muons
-                                        filter = cms.bool(False),
-                                        throwOnMissing = cms.untracked.bool(False))
-
-seqALCARECOTkAlHLTTracksZMuMu = cms.Sequence(ALCARECOTkAlHLTTracksZMuMuHLT+ALCARECOTkAlHLTTracksZMuMuDCSFilter+ALCARECOTkAlHLTTracksZMuMuGoodMuons+ALCARECOTkAlHLTTracksZMuMuRelCombIsoMuons+ALCARECOTkAlHLTTracksZMuMu+TkAlZMuMuGenMuonSelector)
+seqALCARECOTkAlHLTTracksZMuMu = cms.Sequence(ALCARECOTkAlHLTTracksZMuMuHLT+ALCARECOTkAlHLTTracksZMuMuDCSFilter+ALCARECOTkAlHLTTracksZMuMuGoodMuons+ALCARECOTkAlHLTTracksZMuMuRelCombIsoMuons+ALCARECOTkAlHLTTracksZMuMu)
 
 

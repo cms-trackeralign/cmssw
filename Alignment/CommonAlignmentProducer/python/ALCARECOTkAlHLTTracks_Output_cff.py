@@ -15,7 +15,9 @@ OutALCARECOTkAlHLTTracks_noDrop = cms.PSet(
         'keep L1GlobalTriggerReadoutRecord_gtDigis_*_*',
         'keep *_TriggerResults_*_*',
         'keep DcsStatuss_scalersRawToDigi_*_*',
-        'keep *_offlinePrimaryVertices_*_*',
-        'keep *_offlineBeamSpot_*_*')
+        'keep *_hltVerticesPFFilter_*_*',
+        'keep *_onlineBeamSpot_*_*')
 )
 
+OutALCARECOTkAlHLTTracks = OutALCARECOTkAlHLTTracks_noDrop.clone()
+OutALCARECOTkAlHLTTracks.outputCommands.insert(0, "drop *")

@@ -43,6 +43,9 @@ from Alignment.CommonAlignmentProducer.ALCARECOTkAlMinBiasHI_Output_cff import *
 from Alignment.CommonAlignmentProducer.ALCARECOTkAlJetHT_Output_cff import *
 # AlCaReco for track based alignment using V0s
 from Alignment.CommonAlignmentProducer.ALCARECOTkAlV0s_Output_cff import *
+# AlCaReco for track based alignment using HLT tracks
+from Alignment.CommonAlignmentProducer.ALCARECOTkAlHLTTracks_Output_cff import *
+from Alignment.CommonAlignmentProducer.ALCARECOTkAlHLTTracksZMuMu_Output_cff import *
 
 # AlCaReco for pixel calibration using muons
 from Calibration.TkAlCaRecoProducers.ALCARECOSiPixelCalSingleMuon_Output_cff import *

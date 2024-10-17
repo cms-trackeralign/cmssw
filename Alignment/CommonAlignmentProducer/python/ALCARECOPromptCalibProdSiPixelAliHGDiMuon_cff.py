@@ -122,14 +122,17 @@ SiPixelAliMillePedeFileConverterHGDimuon = cms.EDProducer("MillePedeFileConverte
                                                          inputBinaryFile = cms.string(SiPixelAliMilleAlignmentProducerHGDimuon.algoConfig.binaryFile.value()),
                                                          fileBlobLabel = cms.string(''))
 
-seqALCARECOPromptCalibProdSiPixelAliHGDiMu = cms.Sequence(ALCARECOTkAlZMuMuFilterForSiPixelAli*
-                                                          LSNumberFilter*
-                                                          offlineBeamSpot*
-                                                          SiPixelAliHighPuritySelectorHGDimuon*
-                                                          SiPixelAliTrackRefitterHGDimuon0*
-                                                          SiPixelAliTrackerTrackHitFilterHGDimuon*
-                                                          SiPixelAliTrackFitterHGDimuon*
-                                                          SiPixelAliTrackSelectorHGDimuon*
-                                                          SiPixelAliTrackRefitterHGDimuon1*
-                                                          SiPixelAliMilleAlignmentProducerHGDimuon*
-                                                          SiPixelAliMillePedeFileConverterHGDimuon)
+seqALCARECOPromptCalibProdSiPixelAliHGDiMu = cms.Sequence(ALCARECOTkAlZMuMuFilterForSiPixelAli
+                                                          *LSNumberFilter
+                                                          *offlineBeamSpot
+                                                          *SiPixelAliHighPuritySelectorHGDimuon
+                                                          *SiPixelAliTrackRefitterHGDimuon0
+                                                          *SiPixelAliTrackerTrackHitFilterHGDimuon
+                                                          *SiPixelAliTrackFitterHGDimuon
+                                                          *SiPixelAliTrackSelectorHGDimuon
+                                                          *SiPixelAliTrackRefitterHGDimuon1
+                                                          *SiPixelAliMilleAlignmentProducerHGDimuon
+                                                          *SiPixelAliMillePedeFileConverterHGDimuon
+                                                          )
+
+

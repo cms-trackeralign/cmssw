@@ -5,7 +5,6 @@ import FWCore.ParameterSet.Config as cms
 from Alignment.CommonAlignmentProducer.ALCARECOPromptCalibProdSiPixelAliHLT_cff import *
 ALCARECOTkAlMinBiasFilterForSiPixelAliHLTHG = ALCARECOTkAlMinBiasFilterForSiPixelAliHLT.clone()
 
-
 from Alignment.CommonAlignmentProducer.LSNumberFilter_cfi import *
 
 # Ingredient: offlineBeamSpot

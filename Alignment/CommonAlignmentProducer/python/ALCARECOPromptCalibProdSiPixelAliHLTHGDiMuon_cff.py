@@ -124,7 +124,7 @@ SiPixelAliMillePedeFileConverterHLTHGDimuon = cms.EDProducer(
     fileBlobLabel = cms.string('')
 )
 
-seqALCARECOPromptCalibProdSiPixelAliHLTHLTHGDiMu = cms.Sequence(
+seqALCARECOPromptCalibProdSiPixelAliHLTHGDiMu = cms.Sequence(
     ALCARECOTkAlZMuMuFilterForSiPixelAli*
     LSNumberFilter*
     offlineBeamSpot*
